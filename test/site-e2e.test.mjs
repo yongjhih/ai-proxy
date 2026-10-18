@@ -216,7 +216,7 @@ test(
       const indexQuickstart = await page.evalJs(
         `document.querySelector('[data-replace-base-url="true"]').textContent`
       );
-      assert.ok(indexQuickstart.includes(`${baseUrl}/mcp.html`), 'index base URL replaced');
+      assert.ok(indexQuickstart.includes(`${baseUrl}/mcp --name ai-proxy-docs`), 'index base URL replaced');
 
       // Test theme toggle buttons and dark/light Mermaid re-rendering on root /
       await page.evalJs(`document.querySelector('[data-theme-mode="dark"]').click()`);
@@ -373,8 +373,8 @@ test(
         'dashboard-auth-mobile.png'
       );
 
-      // 5. Open mcp.html with #mcp-key & #admin-key and invoke all 6 tools through POST /mcp
-      const selfMcpUrl = `${baseUrl}/mcp.html`;
+      // 5. Open /mcp with #mcp-key & #admin-key and invoke all 6 tools through POST /mcp (and verify /mcp <-> /mcp.html equivalence)
+      const selfMcpUrl = `${baseUrl}/mcp`;
       const siteRecord = relay.store.addSite({ url: selfMcpUrl, name: 'self-mcp' });
       const mcpTargetUrl = `${selfMcpUrl}#mcp-key=${siteRecord.key}&admin-key=${adminKey}&mcp-port=${port}`;
 
@@ -403,8 +403,8 @@ test(
         fs.writeFileSync(path.join(screenshotDir, 'mcp-mobile.png'), Buffer.from(shotMobile.data, 'base64'));
       }
 
-      async function callRelayTool(name, args = {}) {
-        const res = await fetch(`${baseUrl}/mcp?url=${encodeURIComponent(selfMcpUrl)}`, {
+      async function callRelayTool(name, args = {}, targetUrlOverride = selfMcpUrl) {
+        const res = await fetch(`${baseUrl}/mcp?url=${encodeURIComponent(targetUrlOverride)}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -421,10 +421,14 @@ test(
         return JSON.parse(body.result.content[0].text);
       }
 
-      // Call 1: about
+      // Call 1: about (via short /mcp)
       const aboutOut = await callRelayTool('about');
       assert.equal(aboutOut.name, 'ai-proxy');
       assert.equal(aboutOut.adminAuthenticated, true);
+
+      // Call 1b: about (via equivalent /mcp.html against the same /mcp tab session)
+      const aboutHtmlOut = await callRelayTool('about', {}, `${baseUrl}/mcp.html`);
+      assert.equal(aboutHtmlOut.name, 'ai-proxy');
 
       // Call 2: sites
       const sitesOut = await callRelayTool('sites');

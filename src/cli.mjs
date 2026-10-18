@@ -4,7 +4,7 @@ import path from 'node:path';
 import readline from 'node:readline';
 import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { createStore, validateAllowToolSpec } from './store.mjs';
+import { createStore, validateAllowToolSpec, getEquivalentPageUrls } from './store.mjs';
 import { createRelayServer, defaultOpenBrowser } from './relay.mjs';
 import { runDockerWrapper, runDevcontainerSubcommand } from './docker.mjs';
 import { normalizePageUrl } from '../web/url.mjs';
@@ -283,7 +283,7 @@ Commands:
       const matched = allSites.find((s) => {
         if (s.name === target) return true;
         try {
-          return s.url === normalizePageUrl(target);
+          return getEquivalentPageUrls(target).includes(s.url);
         } catch {
           return false;
         }

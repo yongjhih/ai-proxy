@@ -20,14 +20,14 @@ flowchart LR
 
 ```bash
 npx ai-proxy serve
-npx ai-proxy add https://<host>/<org>/<repo>/mcp.html
+npx ai-proxy add https://<host>/<org>/<repo>/mcp --name ai-proxy-docs
 ```
 
 或是允許並連接任何範例靜態網站：
 
 ```bash
 npx ai-proxy allow https://example.github.io/my-docs/
-npx ai-proxy add https://example.github.io/my-docs/mcp.html
+npx ai-proxy add https://example.github.io/my-docs/mcp
 ```
 
 ## 核心規範文件

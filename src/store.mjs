@@ -42,6 +42,26 @@ export function deriveSiteSlug(normalizedUrl) {
   return raw || 'mcp-site';
 }
 
+export function getEquivalentPageUrls(rawUrl) {
+  const normalized = normalizePageUrl(rawUrl);
+  const parsed = new URL(normalized);
+  const p = parsed.pathname;
+  const variants = [normalized];
+  if (p.endsWith('.html') && p !== '/index.html') {
+    const alt = new URL(normalized);
+    alt.pathname = p.slice(0, -'.html'.length) || '/';
+    variants.push(alt.toString());
+  } else if (p !== '/' && !p.endsWith('/')) {
+    const lastSeg = p.slice(p.lastIndexOf('/') + 1);
+    if (lastSeg && !lastSeg.includes('.')) {
+      const alt = new URL(normalized);
+      alt.pathname = `${p}.html`;
+      variants.push(alt.toString());
+    }
+  }
+  return variants;
+}
+
 export function createStore({ configDir = undefined } = {}) {
   const resolvedDir =
     configDir ||
@@ -119,34 +139,42 @@ export function createStore({ configDir = undefined } = {}) {
     return crypto.timingSafeEqual(expected, actual);
   }
 
+  function resolveSiteKeyInStore(rawUrl) {
+    const variants = getEquivalentPageUrls(rawUrl);
+    for (const v of variants) {
+      if (data.sites[v]) return v;
+    }
+    return variants[0];
+  }
+
   function getOrCreatePageKey(rawUrl) {
-    const normalized = normalizePageUrl(rawUrl);
-    if (!data.sites[normalized]) {
-      data.sites[normalized] = {
-        url: normalized,
-        name: deriveSiteSlug(normalized),
+    const keyUrl = resolveSiteKeyInStore(rawUrl);
+    if (!data.sites[keyUrl]) {
+      data.sites[keyUrl] = {
+        url: keyUrl,
+        name: deriveSiteSlug(keyUrl),
         key: generateSecretKey('mcp'),
         addedAt: new Date().toISOString(),
         lastSeenAt: null,
         tools: []
       };
       save();
-    } else if (!data.sites[normalized].key) {
-      data.sites[normalized].key = generateSecretKey('mcp');
+    } else if (!data.sites[keyUrl].key) {
+      data.sites[keyUrl].key = generateSecretKey('mcp');
       save();
     }
-    return data.sites[normalized].key;
+    return data.sites[keyUrl].key;
   }
 
   function verifyPageKey(rawUrl, token) {
     if (typeof token !== 'string' || !token) return false;
-    let normalized;
+    let keyUrl;
     try {
-      normalized = normalizePageUrl(rawUrl);
+      keyUrl = resolveSiteKeyInStore(rawUrl);
     } catch {
       return false;
     }
-    const site = data.sites[normalized];
+    const site = data.sites[keyUrl];
     if (!site || !site.key) return false;
     const expected = Buffer.from(site.key);
     const actual = Buffer.from(token);
@@ -164,24 +192,36 @@ export function createStore({ configDir = undefined } = {}) {
   }
 
   function denyPrefix(rawPrefix) {
-    const normalized = normalizePageUrl(rawPrefix);
-    const clean = normalized.endsWith('/') ? normalized.slice(0, -1) : normalized;
+    const variants = getEquivalentPageUrls(rawPrefix).map((v) =>
+      v.endsWith('/') ? v.slice(0, -1) : v
+    );
     data.allowlist = data.allowlist.filter((item) => {
       const cleanItem = item.endsWith('/') ? item.slice(0, -1) : item;
-      return cleanItem !== clean;
+      return !variants.includes(cleanItem);
     });
     save();
     return [...data.allowlist];
   }
 
   function isUrlAllowed(rawUrl) {
-    return isAllowedPageUrl(rawUrl, data.allowlist);
+    try {
+      const variants = getEquivalentPageUrls(rawUrl);
+      return variants.some((v) => isAllowedPageUrl(v, data.allowlist));
+    } catch {
+      return false;
+    }
   }
 
   function addSite({ url, name = undefined }) {
     const normalized = normalizePageUrl(url);
+    const keyUrl = resolveSiteKeyInStore(normalized);
     allowPrefix(normalized);
-    const key = getOrCreatePageKey(normalized);
+    const key = getOrCreatePageKey(keyUrl);
+    data.sites[keyUrl].url = normalized;
+    if (keyUrl !== normalized) {
+      data.sites[normalized] = data.sites[keyUrl];
+      delete data.sites[keyUrl];
+    }
     if (name && typeof name === 'string') {
       data.sites[normalized].name = name.trim();
     }
@@ -190,23 +230,25 @@ export function createStore({ configDir = undefined } = {}) {
   }
 
   function removeSite(rawUrl) {
-    const normalized = normalizePageUrl(rawUrl);
-    const existing = data.sites[normalized] || null;
-    delete data.sites[normalized];
-    denyPrefix(normalized);
+    const keyUrl = resolveSiteKeyInStore(rawUrl);
+    const existing = data.sites[keyUrl] || null;
+    for (const v of getEquivalentPageUrls(rawUrl)) {
+      delete data.sites[v];
+    }
+    denyPrefix(rawUrl);
     save();
     return existing;
   }
 
   function updateSiteTools(rawUrl, tools = [], title = '') {
-    const normalized = normalizePageUrl(rawUrl);
-    getOrCreatePageKey(normalized);
-    data.sites[normalized].lastSeenAt = new Date().toISOString();
+    const keyUrl = resolveSiteKeyInStore(rawUrl);
+    getOrCreatePageKey(keyUrl);
+    data.sites[keyUrl].lastSeenAt = new Date().toISOString();
     if (title) {
-      data.sites[normalized].title = title;
+      data.sites[keyUrl].title = title;
     }
     if (Array.isArray(tools)) {
-      data.sites[normalized].tools = tools.map((t) => ({
+      data.sites[keyUrl].tools = tools.map((t) => ({
         name: t.name,
         description: t.description || '',
         inputSchema: t.inputSchema || { type: 'object', properties: {} },
@@ -217,7 +259,7 @@ export function createStore({ configDir = undefined } = {}) {
       }));
     }
     save();
-    return data.sites[normalized];
+    return data.sites[keyUrl];
   }
 
   function listSites() {
@@ -226,8 +268,8 @@ export function createStore({ configDir = undefined } = {}) {
 
   function getSite(rawUrl) {
     try {
-      const normalized = normalizePageUrl(rawUrl);
-      return data.sites[normalized] ? structuredClone(data.sites[normalized]) : null;
+      const keyUrl = resolveSiteKeyInStore(rawUrl);
+      return data.sites[keyUrl] ? structuredClone(data.sites[keyUrl]) : null;
     } catch {
       return null;
     }
@@ -236,10 +278,10 @@ export function createStore({ configDir = undefined } = {}) {
   function rotateKeys({ url = undefined, rotateAdmin = false } = {}) {
     const rotated = [];
     if (url) {
-      const normalized = normalizePageUrl(url);
-      getOrCreatePageKey(normalized);
-      data.sites[normalized].key = generateSecretKey('mcp');
-      rotated.push(normalized);
+      const keyUrl = resolveSiteKeyInStore(url);
+      getOrCreatePageKey(keyUrl);
+      data.sites[keyUrl].key = generateSecretKey('mcp');
+      rotated.push(keyUrl);
     } else if (!rotateAdmin) {
       for (const siteUrl of Object.keys(data.sites)) {
         data.sites[siteUrl].key = generateSecretKey('mcp');

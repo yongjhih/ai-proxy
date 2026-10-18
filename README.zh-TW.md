@@ -36,8 +36,8 @@ ai-proxy（127.0.0.1:8788）
 # 1. 啟動本機 ai-proxy 轉送服務（預設監聽 127.0.0.1:8788）
 npx ai-proxy serve
 
-# 2. 將靜態網站的 MCP 頁加入允許清單並註冊至 Claude Code
-npx ai-proxy add https://example.github.io/docs/mcp.html --name example-docs
+# 2. 將本站的 MCP 頁加入允許清單並註冊至 Claude Code
+npx ai-proxy add https://yongjhih.github.io/ai-proxy/mcp --name ai-proxy-docs
 
 # 3. 開啟帶管理金鑰的本機儀表板分頁
 npx ai-proxy open dashboard
@@ -97,7 +97,7 @@ npx ai-proxy devcontainer exec --dir . claude
 ```bash
 # 模式 A：以 Docker 容器執行 ai-proxy（若無映像檔會自動 docker build）
 npx ai-proxy-docker serve --port 8788
-npx ai-proxy-docker add https://example.github.io/docs/mcp.html --name example-docs
+npx ai-proxy-docker add https://yongjhih.github.io/ai-proxy/mcp --name ai-proxy-docs
 npx ai-proxy-docker doctor --dir .
 
 # 模式 B：包裝 docker run，讓容器內的 AI 工具（如 Claude Code）連回宿主機的 ai-proxy
