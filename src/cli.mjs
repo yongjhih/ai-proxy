@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { createStore, validateAllowToolSpec, getEquivalentPageUrls } from './store.mjs';
 import { createRelayServer, defaultOpenBrowser } from './relay.mjs';
 import { runDockerWrapper, runDevcontainerSubcommand } from './docker.mjs';
-import { normalizePageUrl } from '../web/url.mjs';
+import { normalizePageUrl, resolveMcpEndpoint } from '../web/url.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -254,7 +254,11 @@ Commands:
         stderr.write('Error: add requires <page_url>\n');
         return 2;
       }
-      const site = store.addSite({ url: urlArg, name: flags.name });
+      let targetUrl = urlArg;
+      try {
+        targetUrl = await resolveMcpEndpoint(urlArg);
+      } catch {}
+      const site = store.addSite({ url: targetUrl, name: flags.name });
       let mcpEndpoint = `http://${host}:${port}/mcp?url=${encodeURIComponent(site.url)}`;
       try {
         mcpEndpoint = await registerSiteInClaude(site, port, env, host);

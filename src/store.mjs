@@ -213,9 +213,34 @@ export function createStore({ configDir = undefined } = {}) {
   }
 
   function addSite({ url, name = undefined }) {
-    const normalized = normalizePageUrl(url);
+    let raw = String(url || '').trim();
+    try {
+      const p = new URL(raw).pathname.replace(/\/+$/, '');
+      if (!p.endsWith('/mcp') && !p.endsWith('.html')) {
+        const u = new URL(raw);
+        u.pathname = `${p}/mcp`;
+        raw = u.toString();
+      }
+    } catch {}
+
+    const normalized = normalizePageUrl(raw);
     const keyUrl = resolveSiteKeyInStore(normalized);
     allowPrefix(normalized);
+
+    // Automatically allow directory prefix and origin
+    try {
+      const parsed = new URL(normalized);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        allowOrigin(parsed.origin);
+      }
+      const pathname = parsed.pathname;
+      const lastSlash = pathname.lastIndexOf('/');
+      if (lastSlash > 0) {
+        const dirPrefix = `${parsed.origin}${pathname.slice(0, lastSlash + 1)}`;
+        allowPrefix(dirPrefix);
+      }
+    } catch {}
+
     const key = getOrCreatePageKey(keyUrl);
     data.sites[keyUrl].url = normalized;
     if (keyUrl !== normalized) {

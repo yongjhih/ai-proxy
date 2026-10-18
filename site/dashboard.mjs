@@ -5,6 +5,7 @@
 
 import { extractHandshake } from '../web/handshake.mjs';
 import { probeRelay } from '../web/client.mjs';
+import { resolveMcpEndpoint } from '../web/url.mjs';
 
 function escapeHtml(str) {
   return String(str)
@@ -342,15 +343,18 @@ export async function mountAdminDashboard({
 
         <section class="primer-box">
           <div class="primer-box-header">
-            <h2>Registered MCP Sites (${status.sites ? status.sites.length : 0})</h2>
+            <h2>MCP sites (${status.sites ? status.sites.length : 0})</h2>
             <span class="badge badge-success">Port ${escapeHtml(status.port)} · Authenticated</span>
           </div>
           <div class="primer-box-row">
             <form id="form-add-site" class="form-row">
-              <input type="url" name="url" placeholder="https://example.github.io/docs/mcp.html" required style="flex:1;" />
+              <input type="url" name="url" placeholder="https://example.github.io/example/" required style="flex:1;" />
               <input type="text" name="name" placeholder="Optional name (e.g. docs-site)" />
-              <button type="submit" class="btn btn-primary" id="btn-add-site">Add &amp; Allow Site</button>
+              <button type="submit" class="btn btn-primary" id="btn-add-site">Add Site</button>
             </form>
+            <div style="font-size:0.75rem;color:var(--fg-muted);margin-top:0.375rem;">
+              支援直接填寫站點路徑（如 <code>https://example.github.io/example/</code>），自動尋找預設 <code>/mcp</code> 或 <code>/mcp.html</code> 並自動加入 URL Prefix 與 Origin 授權。
+            </div>
           </div>
           <div class="data-table-wrap" style="margin:0;border:none;border-top:1px solid var(--border-default);border-radius:0;">
             <table class="data-table">
@@ -370,10 +374,14 @@ export async function mountAdminDashboard({
           </div>
         </section>
 
-        <section class="primer-box">
-          <div class="primer-box-header">
-            <h2>URL Prefix Allowlist (Path-Boundary Matched)</h2>
-          </div>
+        <details class="primer-box" id="details-allow-prefix">
+          <summary class="primer-box-header">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <span class="details-marker">▶</span>
+              <h2>URL Prefix Allowlist (Path-Boundary Matched)</h2>
+            </div>
+            <span class="badge badge-neutral">${status.allowlist ? status.allowlist.length : 0} configured</span>
+          </summary>
           <div class="primer-box-row">
             <form id="form-allow-prefix" class="form-row">
               <input type="url" name="prefix" placeholder="https://example.github.io/project/" required style="flex:1;" />
@@ -381,15 +389,18 @@ export async function mountAdminDashboard({
             </form>
           </div>
           ${allowlistRows}
-        </section>
+        </details>
 
-        <section class="primer-box">
-          <div class="primer-box-header">
-            <h2><code>/v1</code> Chat Completions Allowed Origins</h2>
+        <details class="primer-box" id="details-allowed-origins">
+          <summary class="primer-box-header">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <span class="details-marker">▶</span>
+              <h2><code>/v1</code> Chat Completions Allowed Origins</h2>
+            </div>
             <span class="badge ${openOriginEnabled ? 'badge-warning' : 'badge-readonly'}">
               ${openOriginEnabled ? 'Wildcard (*) Pure Chat Active' : 'Origin-Restricted'}
             </span>
-          </div>
+          </summary>
           <div class="primer-box-row">
             <form id="form-allow-origin" class="form-row">
               <input type="text" name="origin" placeholder="https://example.github.io" required style="flex:1;" />
@@ -404,17 +415,20 @@ export async function mountAdminDashboard({
             </div>
           </div>
           ${originRows}
-        </section>
+        </details>
 
-        <section class="primer-box">
-          <div class="primer-box-header">
-            <h2>Key Management &amp; Rotation</h2>
-          </div>
+        <details class="primer-box" id="details-key-mgmt">
+          <summary class="primer-box-header">
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <span class="details-marker">▶</span>
+              <h2>Key Management &amp; Rotation</h2>
+            </div>
+          </summary>
           <div class="primer-box-row form-row">
             <button type="button" class="btn" id="btn-rotate-all-keys">Rotate All Site Keys</button>
             <button type="button" class="btn btn-danger" id="btn-rotate-admin-key">Rotate Admin Key</button>
           </div>
-        </section>
+        </details>
       </div>
     `;
 
@@ -424,14 +438,16 @@ export async function mountAdminDashboard({
       addSiteForm.addEventListener('submit', async (ev) => {
         ev.preventDefault();
         const fd = new FormData(addSiteForm);
-        const url = String(fd.get('url') || '').trim();
+        const inputUrl = String(fd.get('url') || '').trim();
         const name = String(fd.get('name') || '').trim() || undefined;
         try {
+          const fetchFn = win && typeof win.fetch === 'function' ? win.fetch.bind(win) : globalThis.fetch;
+          const targetUrl = await resolveMcpEndpoint(inputUrl, { fetchFn });
           const res = await adminFetch('/admin/v1/sites', {
             method: 'POST',
-            body: JSON.stringify({ url, name })
+            body: JSON.stringify({ url: targetUrl, name })
           });
-          setFeedback(`Added and allowed site: ${res.site.url}`);
+          setFeedback(`Added MCP site: ${res.site.url} (automatically allowed prefix & origin)`);
         } catch (err) {
           setFeedback(err.message, 'danger');
         }
