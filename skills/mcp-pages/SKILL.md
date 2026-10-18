@@ -102,10 +102,10 @@ Add a visible link `<a href="mcp.html">MCP Page</a>` and the registration comman
 In your project's `README.md`, add the standard **MCP Pages: Connect** badge:
 
 ```markdown
-[![MCP Pages: Connect](https://img.shields.io/badge/MCP%20Pages-Connect-238636?logo=github&logoColor=white)](https://yongjhih.github.io/ai-proxy/dashboard.html#add-url=https%3A%2F%2F<user>.github.io%2F<repo>%2Fmcp)
+[![MCP Pages: Connect](https://img.shields.io/badge/MCP%20Pages-Connect-238636?logo=github&logoColor=white)](https://yongjhih.github.io/ai-proxy/dashboard#add-url=https%3A%2F%2F<user>.github.io%2F<repo>%2Fmcp)
 ```
 
-Clicking the badge opens the `ai-proxy` dashboard with `#add-url=...`, probes the local relay (port 8788), and pre-populates the site URL.
+Clicking the badge opens the `ai-proxy` dashboard with `#add-url=...`, probes the local relay (port 8788), and directly connects and registers the site in one click without requiring manual confirmation.
 
 In your site's Ask AI drawer / chat assistant, when users ask about MCP or ai-proxy, offer an interactive one-click CTA button:
 

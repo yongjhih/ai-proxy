@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createModelContext } from '../web/model-context.mjs';
 import { createTabClient, probeRelay } from '../web/client.mjs';
 import { executeDirectToolQuery } from '../web/ui.mjs';
-import { getRequestedAddUrl } from '../site/dashboard.mjs';
+import { getRequestedAddUrl, cleanAddUrlFromLocation } from '../site/dashboard.mjs';
 
 test('probeRelay sends no-cors GET request to /healthz', async () => {
   let capturedInit = null;
@@ -214,4 +214,44 @@ test('getRequestedAddUrl extracts add-url from hash or search query', () => {
   );
   assert.equal(getRequestedAddUrl({ location: { hash: '', search: '' } }), '');
 });
+
+test('cleanAddUrlFromLocation strips add-url parameters from hash and search without touching other parameters', () => {
+  let replacedUrl = null;
+  const mockWin = {
+    location: {
+      pathname: '/dashboard',
+      search: '?other=keep',
+      hash: '#add-url=https%3A%2F%2Fexample.com%2Fmcp&admin-key=adm_123'
+    },
+    history: {
+      state: { key: 'val' },
+      replaceState(_state, _title, url) {
+        replacedUrl = url;
+      }
+    }
+  };
+
+  cleanAddUrlFromLocation(mockWin);
+  assert.equal(replacedUrl, '/dashboard?other=keep#admin-key=adm_123');
+
+  // Also cleans from search if present
+  let replacedUrl2 = null;
+  const mockWin2 = {
+    location: {
+      pathname: '/dashboard',
+      search: '?add-url=https%3A%2F%2Fexample.com%2Fmcp&foo=bar',
+      hash: ''
+    },
+    history: {
+      state: null,
+      replaceState(_state, _title, url) {
+        replacedUrl2 = url;
+      }
+    }
+  };
+
+  cleanAddUrlFromLocation(mockWin2);
+  assert.equal(replacedUrl2, '/dashboard?foo=bar');
+});
+
 
