@@ -69,6 +69,37 @@ npx ai-proxy doctor --dir .
 - [轉送通訊協定 (`docs/zh-TW/protocol.md`)](./docs/zh-TW/protocol.md) · [English (`docs/protocol.md`)](./docs/protocol.md)
 - [安全模型與威脅分析 (`docs/zh-TW/security.md`)](./docs/zh-TW/security.md) · [English (`docs/security.md`)](./docs/security.md)
 
+## `.devcontainer` 與 `docker-wrapper` CLI 支援
+
+### 1. `.devcontainer` 支援（`ai-proxy devcontainer`）
+
+本專案內建 [`.devcontainer/devcontainer.json`](./.devcontainer/devcontainer.json) 與 [`.devcontainer/Dockerfile`](./.devcontainer/Dockerfile)，自動轉發 `8788` 埠、設定 `--add-host=host.docker.internal:host-gateway` 與 `AI_PROXY_HOST=host.docker.internal`，讓在容器內執行的 Claude Code 直接連上宿主机上的 `ai-proxy`。
+
+你也可以透過 CLI 為任何專案初始化或操作 `.devcontainer`：
+
+```bash
+# 在任意專案產生或合併 .devcontainer/devcontainer.json
+npx ai-proxy devcontainer init --dir .
+
+# 啟動或在 devcontainer 內執行指令（自動注入 AI_PROXY_* 環境變數）
+npx ai-proxy devcontainer up --dir .
+npx ai-proxy devcontainer exec --dir . claude
+```
+
+### 2. `docker-wrapper` CLI（`ai-proxy-docker` / `docker-wrapper` / `ai-proxy docker`）
+
+```bash
+# 模式 A：以 Docker 容器執行 ai-proxy（若無映像檔會自動 docker build）
+npx ai-proxy-docker serve --port 8788
+npx ai-proxy-docker add https://example.github.io/docs/mcp.html --name example-docs
+npx ai-proxy-docker doctor --dir .
+
+# 模式 B：包裝 docker run，讓容器內的 AI 工具（如 Claude Code）連回宿主機的 ai-proxy
+npx ai-proxy-docker run -it my-agent-image claude
+# 或透過主 CLI 呼叫：
+npx ai-proxy docker-wrapper run -it my-agent-image claude
+```
+
 ## 授權條款
 
 [MIT](./LICENSE)
