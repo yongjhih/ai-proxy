@@ -79,6 +79,7 @@ function extractBearerToken(req) {
 
 export function createRelayServer({
   store = undefined,
+  homeDir = undefined,
   host = '127.0.0.1',
   port = 8788,
   pollTimeoutMs = 25000,
@@ -93,7 +94,7 @@ export function createRelayServer({
   onSiteAdded = undefined,
   onSiteRemoved = undefined
 } = {}) {
-  const activeStore = store || createStore();
+  const activeStore = store || createStore(homeDir ? { configDir: homeDir } : {});
 
   // Map<sessionId, { sessionId, url, title, tools, createdAt, lastSeenAt, parkedPoll: { res, timer } | null }>
   const sessions = new Map();

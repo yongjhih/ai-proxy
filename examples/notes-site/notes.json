@@ -1,0 +1,20 @@
+[
+  {
+    "id": "note-1",
+    "title": "Shared Origin Isolation",
+    "tags": ["security", "github-pages"],
+    "body": "GitHub Pages repositories under <user>.github.io share one browser Origin. Always use path-boundary URL prefix allowlists and history.state keys."
+  },
+  {
+    "id": "note-2",
+    "title": "Zero Backend WebMCP",
+    "tags": ["architecture", "webmcp"],
+    "body": "Static pages register tools on navigator.modelContext and connect outbound to the user's local ai-proxy on 127.0.0.1:8788."
+  },
+  {
+    "id": "note-3",
+    "title": "Read-Only Tool Filtering on /v1",
+    "tags": ["security", "v1"],
+    "body": "The /v1 chat completions endpoint only exposes tools explicitly named via --allow-tool that also declare annotations.readOnlyHint === true."
+  }
+]

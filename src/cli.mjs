@@ -46,6 +46,8 @@ function parseFlags(args) {
       flags.ttl = Number.parseFloat(args[++i] || '');
     } else if (arg === '--dir') {
       flags.dir = args[++i];
+    } else if (arg === '--out' || arg === '-o') {
+      flags.out = args[++i];
     } else if (arg === '--allow-tool') {
       flags.allowTools.push(args[++i]);
     } else if (arg === '--origin') {
@@ -340,9 +342,9 @@ Commands:
     }
 
     if (subcommand === 'vendor') {
-      const targetDir = positionals[1];
+      const targetDir = flags.out || positionals[1];
       if (!targetDir) {
-        stderr.write('Error: vendor requires <target_dir>\n');
+        stderr.write('Error: vendor requires <target_dir> or --out <target_dir>\n');
         return 2;
       }
       const resolvedTarget = path.resolve(targetDir);
@@ -373,7 +375,7 @@ Commands:
         detail: hasMcpHtml ? mcpHtmlPath : `Missing mcp.html in ${siteDir}`
       });
 
-      // Check 2: web/*.mjs modules exist in siteDir/web/
+      // Check 2: web/*.mjs modules exist in siteDir/web/ or siteDir/vendor/ai-proxy-web/
       const requiredModules = [
         'url.mjs',
         'handshake.mjs',
@@ -382,22 +384,30 @@ Commands:
         'client.mjs',
         'ui.mjs'
       ];
+      const candidateDirs = [
+        path.join(siteDir, 'web'),
+        path.join(siteDir, 'vendor', 'ai-proxy-web')
+      ];
+      const activeModDir =
+        candidateDirs.find((d) => fs.existsSync(d)) || path.join(siteDir, 'web');
       const missingModules = requiredModules.filter(
-        (m) => !fs.existsSync(path.join(siteDir, 'web', m))
+        (m) => !fs.existsSync(path.join(activeModDir, m))
       );
       checks.push({
         name: 'vendored_web_modules',
         ok: missingModules.length === 0,
         detail:
           missingModules.length === 0
-            ? 'All required web/*.mjs modules present'
-            : `Missing modules in web/: ${missingModules.join(', ')}`
+            ? `All required WebMCP modules present in ${path.relative(siteDir, activeModDir) || 'web'}`
+            : `Missing modules in ${path.relative(siteDir, activeModDir) || 'web'}: ${missingModules.join(', ')}`
       });
 
-      // Check 3: mcp.html imports web/ module and does not use localStorage for mcp-key
+      // Check 3: mcp.html imports WebMCP module and does not use localStorage for mcp-key
       if (hasMcpHtml) {
         const htmlContent = fs.readFileSync(mcpHtmlPath, 'utf8');
-        const usesWebModule = /web\/(ui|index|client|model-context)\.mjs/.test(htmlContent);
+        const usesWebModule = /(?:web|ai-proxy-web)\/(ui|index|client|model-context)\.mjs/.test(
+          htmlContent
+        );
         const leaksStorage = /localStorage\.setItem\([^)]*mcp-key/i.test(htmlContent);
         checks.push({
           name: 'mcp_page_wiring',
@@ -405,7 +415,7 @@ Commands:
           detail:
             usesWebModule && !leaksStorage
               ? 'mcp.html properly imports WebMCP modules without storage leaks'
-              : 'mcp.html must import ./web/*.mjs and never store mcp-key in localStorage'
+              : 'mcp.html must import ./web/*.mjs (or ./vendor/ai-proxy-web/*.mjs) and never store mcp-key in localStorage'
         });
       }
 

@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+# Docker wrapper for ai-proxy
+set -eu
+
+IMAGE_NAME="${AI_PROXY_DOCKER_IMAGE:-ai-proxy:local}"
+PORT="${AI_PROXY_PORT:-8788}"
+CONFIG_DIR="${AI_PROXY_HOME:-$HOME/.config/ai-proxy}"
+
+mkdir -p "$CONFIG_DIR"
+
+if ! docker image inspect "$IMAGE_NAME" >/dev/null 2>&1; then
+  SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+  docker build -t "$IMAGE_NAME" "$SCRIPT_DIR" >&2
+fi
+
+exec docker run --rm -i \
+  -p "127.0.0.1:${PORT}:8788" \
+  -v "${CONFIG_DIR}:/data/ai-proxy" \
+  "$IMAGE_NAME" "$@"
