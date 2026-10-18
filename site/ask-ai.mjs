@@ -126,6 +126,393 @@ export function formatAssistantMarkdown(markdown) {
   return result.join('');
 }
 
+export function generateClientAssistantReply(promptText, lang = 'zh-TW') {
+  const text = String(promptText || '').trim();
+  const isZh = lang === 'zh-TW';
+
+  // 1. Add MCP / site intent
+  const addMatch =
+    /(?:add|新增|加)\s*(?:mcp|site|站點)?\s*(https?:\/\/[^\s]+)/i.exec(text) ||
+    /(https?:\/\/[^\s]+).*(?:add|新增|加)/i.exec(text);
+  if (addMatch) {
+    const targetUrl = addMatch[1];
+    return isZh
+      ? [
+          `我可以為您新增 MCP 站點 \`${targetUrl}\`。`,
+          '',
+          `請點擊下方按鈕以確認在 Dashboard 中新增：`,
+          `[➕ 確認新增 MCP: ${targetUrl}](action:add-mcp?url=${encodeURIComponent(targetUrl)})`,
+          '',
+          `或手動操作 Dashboard：`,
+          `[📋 前往 MCP sites 新增表單](#form-add-site)`
+        ].join('\n')
+      : [
+          `I can register the MCP site \`${targetUrl}\` for you.`,
+          '',
+          `Click below to confirm adding it in Dashboard:`,
+          `[➕ Confirm Add MCP: ${targetUrl}](action:add-mcp?url=${encodeURIComponent(targetUrl)})`,
+          '',
+          `[📋 Open Add Site Form](#form-add-site)`
+        ].join('\n');
+  }
+
+  // 2. Remove MCP / site intent
+  const removeMatch = /(?:remove|delete|移除|刪除)\s*(?:mcp|site|站點)?\s*(https?:\/\/[^\s]+|\S+)/i.exec(text);
+  if (
+    removeMatch &&
+    (removeMatch[1].startsWith('http') || text.includes('mcp') || text.includes('site') || text.includes('站點'))
+  ) {
+    const targetUrl = removeMatch[1];
+    return isZh
+      ? [
+          `我可以為您移除 MCP 站點 \`${targetUrl}\`。`,
+          '',
+          `請點擊下方按鈕以確認移除（將同步取消 URL Prefix 授權）：`,
+          `[🗑️ 確認移除 MCP: ${targetUrl}](action:remove-mcp?url=${encodeURIComponent(targetUrl)})`,
+          '',
+          `[📋 查看 MCP sites 列表](#admin-dashboard-authenticated)`
+        ].join('\n')
+      : [
+          `I can remove MCP site \`${targetUrl}\` for you.`,
+          '',
+          `Click below to confirm removal:`,
+          `[🗑️ Confirm Remove MCP: ${targetUrl}](action:remove-mcp?url=${encodeURIComponent(targetUrl)})`,
+          '',
+          `[📋 View MCP sites](#admin-dashboard-authenticated)`
+        ].join('\n');
+  }
+
+  // 3. Allow Origin intent
+  const allowOriginMatch = /(?:allow|允許|授權)\s*(?:origin)?\s*(https?:\/\/[^\s]+|\*)/i.exec(text);
+  if (allowOriginMatch) {
+    const targetOrigin = allowOriginMatch[1];
+    return isZh
+      ? [
+          `我可以為您授權 Origin \`${targetOrigin}\` 存取本機 \`/v1\`。`,
+          '',
+          `請點擊下方按鈕以確認授權：`,
+          `[🌐 允許 Origin: ${targetOrigin}](action:allow-origin?origin=${encodeURIComponent(targetOrigin)})`,
+          '',
+          `[📂 展開 Allowed Origins 清單](#details-allowed-origins)`
+        ].join('\n')
+      : [
+          `I can authorize Origin \`${targetOrigin}\` to access local \`/v1\`.`,
+          '',
+          `Click below to confirm authorization:`,
+          `[🌐 Allow Origin: ${targetOrigin}](action:allow-origin?origin=${encodeURIComponent(targetOrigin)})`,
+          '',
+          `[📂 View Allowed Origins](#details-allowed-origins)`
+        ].join('\n');
+  }
+
+  // 4. Deny Origin intent
+  const denyOriginMatch = /(?:deny|revoke|撤銷|拒絕)\s*(?:origin)?\s*(https?:\/\/[^\s]+|\*)/i.exec(text);
+  if (denyOriginMatch) {
+    const targetOrigin = denyOriginMatch[1];
+    return isZh
+      ? [
+          `我可以為您撤銷 Origin \`${targetOrigin}\` 的 \`/v1\` 存取權限。`,
+          '',
+          `請點擊下方按鈕以確認撤銷：`,
+          `[🚫 撤銷 Origin: ${targetOrigin}](action:deny-origin?origin=${encodeURIComponent(targetOrigin)})`,
+          '',
+          `[📂 展開 Allowed Origins 清單](#details-allowed-origins)`
+        ].join('\n')
+      : [
+          `I can revoke Origin \`${targetOrigin}\` access to local \`/v1\`.`,
+          '',
+          `Click below to confirm revocation:`,
+          `[🚫 Revoke Origin: ${targetOrigin}](action:deny-origin?origin=${encodeURIComponent(targetOrigin)})`,
+          '',
+          `[📂 View Allowed Origins](#details-allowed-origins)`
+        ].join('\n');
+  }
+
+  // 5. CLI & Skills intent
+  if (/(?:skills?|技能|cli|claude\s*code|安裝指令|install\s*guide)/i.test(text)) {
+    return isZh
+      ? [
+          `ai-proxy CLI 與 Agent Skills 安裝與配置指南：`,
+          '',
+          `**1. CLI 執行與安裝：**`,
+          '```bash',
+          'npx ai-proxy serve --port 8788',
+          'npm install -g @ai-proxy/cli',
+          '```',
+          '',
+          `**2. 連接 Claude Code：**`,
+          '```bash',
+          'claude mcp add --transport http ai-proxy http://127.0.0.1:8788/mcp?url=https://yongjhih.github.io/ai-proxy/mcp',
+          '```',
+          '',
+          `**3. AI Agent Skills (skills/mcp-pages/SKILL.md)：**`,
+          `支援 Antigravity、Cursor、Windsurf，指導 Agent 為靜態網站快速建立 WebMCP 頁面與 vendor 模組。`,
+          '',
+          `[🚀 前往快速上手章節 (Quickstart)](#quickstart)`,
+          `[🛠️ 透過 WebMCP 查詢 cli_skills 工具](mcp.html?tool=cli_skills)`
+        ].join('\n')
+      : [
+          `ai-proxy CLI & Agent Skills Installation Guide:`,
+          '',
+          `**1. CLI Run & Install:**`,
+          '```bash',
+          'npx ai-proxy serve --port 8788',
+          'npm install -g @ai-proxy/cli',
+          '```',
+          '',
+          `**2. Connect Claude Code:**`,
+          '```bash',
+          'claude mcp add --transport http ai-proxy http://127.0.0.1:8788/mcp?url=https://yongjhih.github.io/ai-proxy/mcp',
+          '```',
+          '',
+          `**3. Agent Skills (skills/mcp-pages/SKILL.md):**`,
+          `Teaches coding agents to vendor WebMCP client modules and publish static MCP endpoints.`,
+          '',
+          `[🚀 View Quickstart](#quickstart)`,
+          `[🛠️ Inspect cli_skills tool](mcp.html?tool=cli_skills)`
+        ].join('\n');
+  }
+
+  // 6. Quickstart
+  if (/(?:quickstart|快速上手|開始|入門|install|安裝)/i.test(text)) {
+    return isZh
+      ? [
+          `歡迎使用 MCP Pages！以下為快速上手指南：`,
+          '',
+          `[🚀 前往快速上手章節 (Quickstart)](#quickstart)`,
+          '',
+          `常用指令範例：`,
+          '```bash',
+          'npx ai-proxy add https://yongjhih.github.io/ai-proxy/mcp --name ai-proxy',
+          '```',
+          '',
+          `[📋 查看已註冊站點](#admin-dashboard-authenticated)`
+        ].join('\n')
+      : [
+          `Welcome to MCP Pages! Here is the quickstart guide:`,
+          '',
+          `[🚀 Jump to Quickstart](#quickstart)`,
+          '',
+          '```bash',
+          'npx ai-proxy add https://yongjhih.github.io/ai-proxy/mcp --name ai-proxy',
+          '```',
+          '',
+          `[📋 View registered sites](#admin-dashboard-authenticated)`
+        ].join('\n');
+  }
+
+  // 7. Security & Allowlist
+  if (/(?:security|安全|安全性|allowlist|白名單)/i.test(text)) {
+    return isZh
+      ? [
+          `MCP Pages 嚴格落實七大安全性基準（URL Fragment 金鑰隔離、Origin 檢查、唯讀防護等）：`,
+          '',
+          `[🔒 查看安全性規範 (Security)](doc.html?d=security)`,
+          `[📂 展開 URL Prefix Allowlist](#details-allow-prefix)`,
+          `[📂 展開 Chat Completions Allowed Origins](#details-allowed-origins)`
+        ].join('\n')
+      : [
+          `MCP Pages enforces 7 security baselines:`,
+          '',
+          `[🔒 Security Baseline Document](doc.html?d=security)`,
+          `[📂 Expand URL Prefix Allowlist](#details-allow-prefix)`,
+          `[📂 Expand Allowed Origins](#details-allowed-origins)`
+        ].join('\n');
+  }
+
+  // 8. Spec & Protocol
+  if (/(?:spec|規格|標準)/i.test(text)) {
+    return isZh
+      ? [
+          `您可以查看 MCP Pages 完整規格與模型：`,
+          '',
+          `[📄 查看 MCP Pages 規格 (Spec)](doc.html?d=spec)`,
+          `[🔄 查看傳輸協定 (Protocol)](doc.html?d=protocol)`
+        ].join('\n')
+      : [
+          `Read the normative specifications for MCP Pages:`,
+          '',
+          `[📄 Normative Specification (Spec)](doc.html?d=spec)`,
+          `[🔄 Transport Protocol](doc.html?d=protocol)`
+        ].join('\n');
+  }
+  if (/(?:protocol|協定|通訊協定)/i.test(text)) {
+    return isZh
+      ? [
+          `MCP Pages 協定涵蓋 Long Polling 雙向通道與多客戶端 ID 重寫：`,
+          '',
+          `[🔄 查看傳輸協定 (Protocol)](doc.html?d=protocol)`,
+          `[📄 查看 MCP Pages 規格 (Spec)](doc.html?d=spec)`
+        ].join('\n')
+      : [
+          `MCP Pages transport protocol covers dual long-polling channels and multi-client ID rewriting:`,
+          '',
+          `[🔄 View Protocol](doc.html?d=protocol)`,
+          `[📄 View Spec](doc.html?d=spec)`
+        ].join('\n');
+  }
+
+  // 9. Knowledge
+  if (/(?:knowledge|知識|架構|architecture|faq|常見問題)/i.test(text)) {
+    return isZh
+      ? [
+          `MCP Pages & ai-proxy 知識庫概覽：`,
+          '',
+          `ai-proxy 是零依賴的輕量級本機中繼器，為靜態網站提供 WebMCP 與 AI 雙向通道。`,
+          '',
+          `主要知識範疇：`,
+          `- **系統架構 (Architecture)**：本機 Relay (8788)、Long Polling 分頁通道 (/tab/v1/poll)、Claude Code MCP 端點 (/mcp)。`,
+          `- **七大安全基準 (7 Security Baselines)**：Fragment 金鑰隔離、URL Prefix 白名單、封鎖 /mcp Origin、/v1 僅限具名唯讀工具、獨立 Admin Key、防呆標註、純對話萬用字元。`,
+          `- **規範與協定 (Spec & Protocol)**：WebMCP 標準 (window.navigator.modelContext) 與 JSON-RPC 2.0。`,
+          '',
+          `[📄 查看完整規範 (Spec)](doc.html?d=spec)`,
+          `[🔒 查看安全性規範 (Security)](doc.html?d=security)`,
+          `[🛠️ 透過 WebMCP 查詢 knowledge 工具](mcp.html?tool=knowledge)`
+        ].join('\n')
+      : [
+          `MCP Pages & ai-proxy Knowledge Base:`,
+          '',
+          `ai-proxy is a zero-dependency local relay providing WebMCP bridges for static web applications.`,
+          '',
+          `[📄 Normative Specification](doc.html?d=spec)`,
+          `[🔒 Security Baseline](doc.html?d=security)`,
+          `[🛠️ Query knowledge tool](mcp.html?tool=knowledge)`
+        ].join('\n');
+  }
+
+  // 10. Site Tour
+  if (/(?:tour|導覽|地圖|sitemap|站點導覽|頁面導覽)/i.test(text)) {
+    return isZh
+      ? [
+          `ai-proxy 網站導覽地圖：`,
+          '',
+          `- [英文首頁 (index.html)](index.html) · [快速上手](#quickstart) · [安全性](#security)`,
+          `- [繁體中文首頁 (zh-TW.html)](zh-TW.html) · [快速上手](#quickstart)`,
+          `- [📄 規格文件 (doc.html?d=spec)](doc.html?d=spec) · [🔒 安全模型 (doc.html?d=security)](doc.html?d=security)`,
+          `- [📊 本機控制台 (dashboard.html)](dashboard.html) · [📋 MCP 站點列表](#admin-dashboard-authenticated)`,
+          `- [🛠️ WebMCP 工具目錄 (mcp.html)](mcp.html)`,
+          '',
+          `[🛠️ 透過 WebMCP 查詢 site_tour 工具](mcp.html?tool=site_tour)`
+        ].join('\n')
+      : [
+          `ai-proxy Site Tour & Navigation:`,
+          '',
+          `- [Home (index.html)](index.html) · [Quickstart](#quickstart)`,
+          `- [Traditional Chinese (zh-TW.html)](zh-TW.html)`,
+          `- [📄 Normative Spec (doc.html?d=spec)](doc.html?d=spec) · [🔒 Security (doc.html?d=security)](doc.html?d=security)`,
+          `- [📊 Dashboard (dashboard.html)](dashboard.html)`,
+          `- [🛠️ WebMCP Catalog (mcp.html)](mcp.html)`
+        ].join('\n');
+  }
+
+  // 11. Tools
+  if (/(?:tools|工具|webmcp)/i.test(text)) {
+    return isZh
+      ? [
+          `MCP 頁面可向 AI 暴露多種 WebMCP 工具（如 \`about\`, \`spec\`, \`knowledge\`, \`cli_skills\`, \`site_tour\`, \`sites\`, \`site_tools\` 等）：`,
+          '',
+          `[🛠️ 查看 MCP 工具目錄 (mcp.html)](mcp.html)`,
+          `[📋 查看已註冊站點列表](#admin-dashboard-authenticated)`
+        ].join('\n')
+      : [
+          `MCP Pages expose WebMCP tools such as \`about\`, \`spec\`, \`knowledge\`, \`cli_skills\`, \`site_tour\`, \`sites\`, \`site_tools\`:`,
+          '',
+          `[🛠️ View WebMCP Catalog (mcp.html)](mcp.html)`,
+          `[📋 View Registered Sites](#admin-dashboard-authenticated)`
+        ].join('\n');
+  }
+
+  // 12. Dashboard
+  if (/(?:dashboard|儀表板|控制台|打開|展開)/i.test(text)) {
+    return isZh
+      ? [
+          `您可以在 Dashboard 中管理 MCP 站點、URL Allowlist 與 Origin 授權：`,
+          '',
+          `[📊 前往 Dashboard](dashboard.html)`,
+          `[📋 前往 MCP sites 區塊](#admin-dashboard-authenticated)`,
+          `[📂 展開 URL Prefix Allowlist](#details-allow-prefix)`,
+          `[📂 展開 Allowed Origins](#details-allowed-origins)`
+        ].join('\n')
+      : [
+          `Manage your MCP sites, allowlists, and origin permissions in Dashboard:`,
+          '',
+          `[📊 Open Dashboard](dashboard.html)`,
+          `[📋 View MCP Sites](#admin-dashboard-authenticated)`,
+          `[📂 Expand URL Prefix Allowlist](#details-allow-prefix)`,
+          `[📂 Expand Allowed Origins](#details-allowed-origins)`
+        ].join('\n');
+  }
+
+  // 13. What is MCP / ai-proxy / Overview intent
+  if (
+    /(?:什麼是|mcp 是什麼|什麼是 mcp|what is mcp|ai-proxy 是什麼|什麼是 ai-proxy|what is ai-proxy|概念|原理|介紹|說明|how it works|如何運作|what is|overview|簡介)/i.test(
+      text
+    ) ||
+    /^(?:mcp|ai-proxy|webmcp)[?？!！.]*$/i.test(text)
+  ) {
+    return isZh
+      ? [
+          `**MCP Pages** 將任何靜態網站（例如 GitHub Pages）轉化為標準的 Model Context Protocol (MCP) 伺服器，讓 AI 代理（Claude Code、Antigravity、Cursor 等）能夠直接讀取並操作網頁資料與工具。`,
+          '',
+          `**ai-proxy** 則是零依賴的本機輕量級中繼器（Local Relay，預設監聽 8788 埠），串接本機 AI 與靜態網頁上的 WebMCP 端點，同時嚴格落實七大安全性基準。`,
+          '',
+          `**主要核心特色：**`,
+          `1. **零後端部署**：靜態網頁透過瀏覽器分頁即時註冊為 MCP 伺服器，無需後端維護。`,
+          `2. **WebMCP 標準**：遵循標準的 \`window.navigator.modelContext\` 與 JSON-RPC 2.0 規格。`,
+          `3. **七大安全性防護**：URL Fragment 金鑰交接隔離、Origin 檢查、URL Prefix 白名單、具名唯讀工具授權。`,
+          `4. **AI 雙向溝通**：提供本機 \`/v1/chat/completions\` 端點與 \`mcp.html\` 工具目錄。`,
+          '',
+          `[🚀 快速上手指南 (Quickstart)](#quickstart)`,
+          `[🛠️ 查看 WebMCP 工具目錄 (mcp.html)](mcp.html)`,
+          `[📄 規格文件 (doc.html?d=spec)](doc.html?d=spec)`,
+          `[🔒 安全性規範 (doc.html?d=security)](doc.html?d=security)`,
+          `[📊 打開本機控制台 (Dashboard)](dashboard.html)`
+        ].join('\n')
+      : [
+          `**MCP Pages** turns any static website (like GitHub Pages) into a standard Model Context Protocol (MCP) server, allowing AI agents (Claude Code, Antigravity, Cursor) to directly inspect and interact with web pages and tools.`,
+          '',
+          `**ai-proxy** is a zero-dependency local relay (default port 8788) bridging local AI with static WebMCP endpoints while strictly enforcing 7 security baselines.`,
+          '',
+          `**Key Features:**`,
+          `1. **Zero Backend Required**: Browser tabs register as MCP servers on-the-fly.`,
+          `2. **Standard WebMCP**: Based on \`navigator.modelContext\` and JSON-RPC 2.0.`,
+          `3. **7 Security Baselines**: URL fragment isolation, origin checks, prefix allowlists, read-only tools.`,
+          `4. **Bidirectional AI**: Local \`/v1/chat/completions\` and interactive tool catalogs.`,
+          '',
+          `[🚀 Quickstart Guide](#quickstart)`,
+          `[🛠️ WebMCP Tools Catalog (mcp.html)](mcp.html)`,
+          `[📄 Normative Spec (doc.html?d=spec)](doc.html?d=spec)`,
+          `[🔒 Security Baseline (doc.html?d=security)](doc.html?d=security)`,
+          `[📊 Open Dashboard (dashboard.html)](dashboard.html)`
+        ].join('\n');
+  }
+
+  // Fallback
+  return isZh
+    ? [
+        `我是您的 **MCP Pages & ai-proxy 智慧助理**。我已收到您的訊息：「${text}」。`,
+        '',
+        `您可以直接透過下方捷徑導航或操作：`,
+        `- [🚀 前往快速上手指南](#quickstart)`,
+        `- [📋 查看 MCP sites 列表](#admin-dashboard-authenticated)`,
+        `- [➕ 新增 MCP 站點表單](#form-add-site)`,
+        `- [📂 展開 URL Prefix Allowlist](#details-allow-prefix)`,
+        `- [🔒 查看安全性規範 (Security)](doc.html?d=security)`,
+        `- [🛠️ 查看 MCP 工具目錄 (mcp.html)](mcp.html)`
+      ].join('\n')
+    : [
+        `I am your **MCP Pages & ai-proxy Assistant**. Received: "${text}".`,
+        '',
+        `Quick navigation & actions:`,
+        `- [🚀 Quickstart](#quickstart)`,
+        `- [📋 Registered MCP sites](#admin-dashboard-authenticated)`,
+        `- [➕ Add MCP site form](#form-add-site)`,
+        `- [📂 URL Prefix Allowlist](#details-allow-prefix)`,
+        `- [🔒 Security baselines (Security)](doc.html?d=security)`,
+        `- [🛠️ WebMCP Tools Catalog (mcp.html)](mcp.html)`
+      ].join('\n');
+}
+
 export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
   const doc = win && win.document;
   if (!doc) return null;
@@ -140,9 +527,11 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
   if (!drawer || !form || !input || !messagesEl) return null;
 
   function loadStoredHistory() {
-    if (!win || !win.sessionStorage) return [];
+    if (!win) return [];
     try {
-      const raw = win.sessionStorage.getItem(STORAGE_KEY_HISTORY);
+      const raw =
+        (win.sessionStorage && win.sessionStorage.getItem(STORAGE_KEY_HISTORY)) ||
+        (win.localStorage && win.localStorage.getItem(STORAGE_KEY_HISTORY));
       if (!raw) return [];
       const parsed = JSON.parse(raw);
       return Array.isArray(parsed) ? parsed : [];
@@ -152,16 +541,77 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
   }
 
   function saveStoredHistory(historyList) {
-    if (!win || !win.sessionStorage) return;
+    if (!win) return;
     try {
       const trimmed = historyList.slice(-50);
-      win.sessionStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(trimmed));
+      const json = JSON.stringify(trimmed);
+      if (win.sessionStorage) win.sessionStorage.setItem(STORAGE_KEY_HISTORY, json);
+      if (win.localStorage) win.localStorage.setItem(STORAGE_KEY_HISTORY, json);
     } catch {}
+  }
+
+  function clearStoredHistory() {
+    if (!win) return;
+    try {
+      if (win.sessionStorage) win.sessionStorage.removeItem(STORAGE_KEY_HISTORY);
+      if (win.localStorage) win.localStorage.removeItem(STORAGE_KEY_HISTORY);
+    } catch {}
+  }
+
+  function renderDefaultGreeting() {
+    const isZh = lang === 'zh-TW';
+    const chipsHtml = isZh
+      ? `<div class="ask-ai-chips">
+          <button type="button" class="ask-ai-chip" data-ask="mcp 是什麼？">❓ 什麼是 MCP？</button>
+          <button type="button" class="ask-ai-chip" data-ask="快速上手指南">🚀 快速上手</button>
+          <button type="button" class="ask-ai-chip" data-ask="查看 WebMCP 工具目錄">🛠️ WebMCP 工具</button>
+          <button type="button" class="ask-ai-chip" data-ask="七大安全基準">🔒 安全基準</button>
+          <button type="button" class="ask-ai-chip" data-ask="查看規格文件">📄 規格與協定</button>
+          <button type="button" class="ask-ai-chip" data-ask="如何安裝 CLI 與 agent skills">💻 CLI &amp; Skills</button>
+        </div>`
+      : `<div class="ask-ai-chips">
+          <button type="button" class="ask-ai-chip" data-ask="What is MCP Pages?">❓ What is MCP?</button>
+          <button type="button" class="ask-ai-chip" data-ask="Quickstart guide">🚀 Quickstart</button>
+          <button type="button" class="ask-ai-chip" data-ask="WebMCP tools catalog">🛠️ WebMCP Tools</button>
+          <button type="button" class="ask-ai-chip" data-ask="Security baselines">🔒 Security</button>
+          <button type="button" class="ask-ai-chip" data-ask="Normative specification">📄 Spec &amp; Protocol</button>
+          <button type="button" class="ask-ai-chip" data-ask="CLI and agent skills">💻 CLI &amp; Skills</button>
+        </div>`;
+
+    const greetingText = isZh
+      ? `<p>您好！我是您的 <strong>MCP Pages &amp; ai-proxy 智慧助理</strong>。您可以詢問我關於 MCP Pages 架構、規格、安全基準、CLI 安裝或 Dashboard 管理的問題。</p>${chipsHtml}`
+      : `<p>Hello! I am your <strong>MCP Pages &amp; ai-proxy Assistant</strong>. Ask me how to configure ai-proxy, deploy static MCP pages, inspect security baselines, or manage site origins.</p>${chipsHtml}`;
+
+    messagesEl.innerHTML = '';
+    const div = doc.createElement('div');
+    div.className = 'ask-ai-msg ask-ai-msg-assistant';
+    div.innerHTML = greetingText;
+    messagesEl.appendChild(div);
+  }
+
+  function isScrollAtBottom(el, threshold = 60) {
+    if (!el) return true;
+    const ch = el.clientHeight || 0;
+    const sh = el.scrollHeight || 0;
+    const st = el.scrollTop || 0;
+    return (sh - st - ch) <= threshold;
+  }
+
+  function ensureScrollBottom(el, wasAtBottom) {
+    if (!el || wasAtBottom === false) return;
+    el.scrollTop = el.scrollHeight;
+    if (typeof win.requestAnimationFrame === 'function') {
+      win.requestAnimationFrame(() => {
+        if (isScrollAtBottom(el, 60)) {
+          el.scrollTop = el.scrollHeight;
+        }
+      });
+    }
   }
 
   const messageHistory = loadStoredHistory();
 
-  // If there is existing conversation history, render it
+  // If there is existing conversation history, render it; otherwise render default greeting with chips
   if (messageHistory.length > 0) {
     messagesEl.innerHTML = '';
     for (const item of messageHistory) {
@@ -175,6 +625,8 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
       messagesEl.appendChild(div);
     }
     messagesEl.scrollTop = messagesEl.scrollHeight;
+  } else {
+    renderDefaultGreeting();
   }
 
   function setOpen(open) {
@@ -183,9 +635,10 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
     if (triggerBtn) {
       triggerBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
-    if (win && win.sessionStorage) {
+    if (win) {
       try {
-        win.sessionStorage.setItem(STORAGE_KEY_OPEN, open ? 'true' : 'false');
+        if (win.sessionStorage) win.sessionStorage.setItem(STORAGE_KEY_OPEN, open ? 'true' : 'false');
+        if (win.localStorage) win.localStorage.setItem(STORAGE_KEY_OPEN, open ? 'true' : 'false');
       } catch {}
     }
     if (open) {
@@ -194,9 +647,11 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
   }
 
   // Restore drawer open state if it was open prior to navigating
-  if (win && win.sessionStorage) {
+  if (win) {
     try {
-      const savedOpen = win.sessionStorage.getItem(STORAGE_KEY_OPEN);
+      const savedOpen =
+        (win.sessionStorage && win.sessionStorage.getItem(STORAGE_KEY_OPEN)) ||
+        (win.localStorage && win.localStorage.getItem(STORAGE_KEY_OPEN));
       if (savedOpen === 'true') {
         setOpen(true);
       }
@@ -229,17 +684,8 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
   if (clearBtn) {
     clearBtn.addEventListener('click', () => {
       messageHistory.length = 0;
-      if (win && win.sessionStorage) {
-        try {
-          win.sessionStorage.removeItem(STORAGE_KEY_HISTORY);
-        } catch {}
-      }
-      messagesEl.innerHTML = '';
-      appendAssistantFormatted(
-        lang === 'zh-TW'
-          ? '對話紀錄已清除。您可以隨時詢問我任何關於 MCP Pages 或 ai-proxy 的問題！\n\n- [🚀 前往快速上手指南](#quickstart)\n- [📋 查看 MCP sites 列表](#admin-dashboard-authenticated)\n- [🔒 查看安全性規範](doc.html?d=security)'
-          : 'Chat history cleared. Feel free to ask me anything about MCP Pages or ai-proxy!\n\n- [🚀 Quickstart](#quickstart)\n- [📋 View MCP sites](#admin-dashboard-authenticated)\n- [🔒 Security baseline](doc.html?d=security)'
-      );
+      clearStoredHistory();
+      renderDefaultGreeting();
     });
   }
 
@@ -540,6 +986,21 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
 
   // Delegate clicks on interactive buttons & links within messages
   messagesEl.addEventListener('click', (ev) => {
+    const chip = ev.target.closest('.ask-ai-chip');
+    if (chip) {
+      ev.preventDefault();
+      const query = chip.getAttribute('data-ask') || chip.textContent.trim();
+      if (query) {
+        input.value = query;
+        if (typeof form.requestSubmit === 'function') {
+          form.requestSubmit();
+        } else {
+          form.dispatchEvent(new win.Event('submit', { cancelable: true, bubbles: true }));
+        }
+      }
+      return;
+    }
+
     const ctaBtn = ev.target.closest('.ask-ai-cta-btn');
     if (ctaBtn) {
       ev.preventDefault();
@@ -566,9 +1027,10 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
           handleJump(href);
         } else if (!href.startsWith('http') && !href.startsWith('mailto:')) {
           // Internal relative navigation: preserve open state across pages
-          if (win && win.sessionStorage) {
+          if (win) {
             try {
-              win.sessionStorage.setItem(STORAGE_KEY_OPEN, 'true');
+              if (win.sessionStorage) win.sessionStorage.setItem(STORAGE_KEY_OPEN, 'true');
+              if (win.localStorage) win.localStorage.setItem(STORAGE_KEY_OPEN, 'true');
             } catch {}
           }
         }
@@ -584,6 +1046,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
 
     appendMessage('user', prompt);
     const pendingEl = appendMessage('assistant', '…', false, null, false);
+    ensureScrollBottom(messagesEl, true);
 
     // Auto-detect jump/navigation requests and trigger page navigation immediately
     if (/(?:跳轉|前往|打開|跳到|查看|jump to|go to|open)/i.test(prompt)) {
@@ -626,10 +1089,13 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
       if (!res.ok) {
         const errorText =
           (data && data.error && (data.error.message || data.error)) ||
-          `HTTP ${res.status}: Origin not authorized on /v1. Run: \`npx ai-proxy allow-origin ${win.location.origin}\``;
-        pendingEl.innerHTML = formatAssistantMarkdown(errorText);
-        messageHistory.push({ role: 'assistant', content: sanitizeForStorage(errorText) });
+          `HTTP ${res.status}: Origin not authorized on /v1. Run: \`npx ai-proxy allow-origin ${win.location ? win.location.origin : ''}\``;
+        const clientAnswer = generateClientAssistantReply(prompt, lang);
+        const combined = `${clientAnswer}\n\n> ⚠️ *${errorText}*\n\n[🔌 接上本機 ai-proxy (Connect)](action:connect)`;
+        pendingEl.innerHTML = formatAssistantMarkdown(combined);
+        messageHistory.push({ role: 'assistant', content: sanitizeForStorage(combined) });
         saveStoredHistory(messageHistory);
+        ensureScrollBottom(messagesEl, true);
         return;
       }
 
@@ -639,19 +1105,28 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
         data.choices[0].message &&
         data.choices[0].message.content;
 
-      const replyContent = content || JSON.stringify(data);
+      let replyContent = content || JSON.stringify(data);
+      const isFallbackEcho =
+        replyContent.includes('ai-proxy local assistant received:') ||
+        replyContent.includes('Permitted read-only tools: [none]');
+      if (isFallbackEcho) {
+        replyContent = generateClientAssistantReply(prompt, lang);
+      }
+
       pendingEl.innerHTML = formatAssistantMarkdown(replyContent);
       messageHistory.push({ role: 'assistant', content: sanitizeForStorage(replyContent) });
       saveStoredHistory(messageHistory);
-      messagesEl.scrollTop = messagesEl.scrollHeight;
+      ensureScrollBottom(messagesEl, true);
     } catch {
-      const fallbackText =
+      const clientAnswer = generateClientAssistantReply(prompt, lang);
+      const offlineNote =
         lang === 'zh-TW'
-          ? '無法連線至本機 ai-proxy (/v1)。請確認已啟動 `npx ai-proxy serve` 並允許此 Origin。\n\n[🔌 接上本機 ai-proxy (Connect)](action:connect)'
-          : 'Could not reach local ai-proxy (/v1). Ensure `npx ai-proxy serve` is running and this Origin is allowed.\n\n[🔌 Connect to local ai-proxy](action:connect)';
-      pendingEl.innerHTML = formatAssistantMarkdown(fallbackText);
-      messageHistory.push({ role: 'assistant', content: sanitizeForStorage(fallbackText) });
+          ? `${clientAnswer}\n\n> 💡 本機 ai-proxy 未連線或目前 Origin 尚未授權。\n\n[🔌 接上本機 ai-proxy (Connect)](action:connect)`
+          : `${clientAnswer}\n\n> 💡 Local ai-proxy is not connected or Origin is unauthorized.\n\n[🔌 Connect to local ai-proxy](action:connect)`;
+      pendingEl.innerHTML = formatAssistantMarkdown(offlineNote);
+      messageHistory.push({ role: 'assistant', content: sanitizeForStorage(offlineNote) });
       saveStoredHistory(messageHistory);
+      ensureScrollBottom(messagesEl, true);
     }
   });
 

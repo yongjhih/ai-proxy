@@ -855,6 +855,31 @@ textarea {
   padding: 0.375rem 0.625rem;
 }
 
+.ask-ai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.5rem;
+}
+
+.ask-ai-chip {
+  background-color: var(--bg-default);
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  padding: 0.2rem 0.625rem;
+  font-size: 0.75rem;
+  color: var(--accent-fg);
+  cursor: pointer;
+  line-height: 1.4;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  font-family: inherit;
+}
+
+.ask-ai-chip:hover {
+  background-color: var(--bg-subtle);
+  border-color: var(--accent-emphasis);
+}
+
 .highlight-pulse {
   outline: 2px solid var(--accent-emphasis) !important;
   box-shadow: 0 0 0 4px var(--accent-subtle) !important;

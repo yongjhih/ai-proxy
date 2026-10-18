@@ -268,10 +268,36 @@ export function generateDefaultAssistantReply(promptText, permittedTools = []) {
     ].join('\n');
   }
 
+  // 13. What is MCP / ai-proxy / Overview intent
+  if (
+    /(?:什麼是|mcp 是什麼|什麼是 mcp|what is mcp|ai-proxy 是什麼|什麼是 ai-proxy|what is ai-proxy|概念|原理|介紹|說明|how it works|如何運作|what is|overview|簡介)/i.test(
+      text
+    ) ||
+    /^(?:mcp|ai-proxy|webmcp)[?？!！.]*$/i.test(text)
+  ) {
+    return [
+      `**MCP Pages** 將任何靜態網站（例如 GitHub Pages）轉化為標準的 Model Context Protocol (MCP) 伺服器，讓 AI 代理（Claude Code、Antigravity、Cursor 等）能夠直接讀取並操作網頁資料與工具。`,
+      '',
+      `**ai-proxy** 則是零依賴的本機輕量級中繼器（Local Relay，預設監聽 8788 埠），串接本機 AI 與靜態網頁上的 WebMCP 端點，同時嚴格落實七大安全性基準。`,
+      '',
+      `**主要核心特色：**`,
+      `1. **零後端部署**：靜態網頁透過瀏覽器分頁即時註冊為 MCP 伺服器，無需後端維護。`,
+      `2. **WebMCP 標準**：遵循標準的 \`window.navigator.modelContext\` 與 JSON-RPC 2.0 規格。`,
+      `3. **七大安全性防護**：URL Fragment 金鑰交接隔離、Origin 檢查、URL Prefix 白名單、具名唯讀工具授權。`,
+      `4. **AI 雙向溝通**：提供本機 \`/v1/chat/completions\` 端點與 \`mcp.html\` 工具目錄。`,
+      '',
+      `[🚀 快速上手指南 (Quickstart)](#quickstart)`,
+      `[🛠️ 查看 WebMCP 工具目錄 (mcp.html)](mcp.html)`,
+      `[📄 規格文件 (doc.html?d=spec)](doc.html?d=spec)`,
+      `[🔒 安全性規範 (doc.html?d=security)](doc.html?d=security)`,
+      `[📊 打開本機控制台 (Dashboard)](dashboard.html)`
+    ].join('\n');
+  }
+
   // Fallback
   const toolList = permittedTools.map((t) => t.fullSpec).join(', ') || 'none';
   return [
-    `ai-proxy local assistant received: "${text}". Permitted read-only tools: [${toolList}].`,
+    `我是您的 **MCP Pages & ai-proxy 智慧助理**。我已收到您的訊息：「${text}」。`,
     '',
     `您可以直接透過下方捷徑導航或操作：`,
     `- [🚀 前往快速上手指南](#quickstart)`,
@@ -279,7 +305,9 @@ export function generateDefaultAssistantReply(promptText, permittedTools = []) {
     `- [➕ 新增 MCP 站點表單](#form-add-site)`,
     `- [📂 展開 URL Prefix Allowlist](#details-allow-prefix)`,
     `- [🔒 查看安全性規範 (Security)](doc.html?d=security)`,
-    `- [🛠️ 查看 MCP 工具目錄 (mcp.html)](mcp.html)`
+    `- [🛠️ 查看 MCP 工具目錄 (mcp.html)](mcp.html)`,
+    '',
+    `*Permitted read-only tools: [${toolList}].*`
   ].join('\n');
 }
 
@@ -1010,32 +1038,35 @@ export function createRelayServer({
       }
     }
 
-    // If no tab has connected yet to populate site.tools on the relay, provide default ai-proxy read-only tools
-    // so the assistant has access to them when ai-proxy tools are allowed
-    if (permitted.length === 0 && allowedSpecs.some((s) => s.startsWith('mcp__ai-proxy__'))) {
-      const defaultSelfTools = [
-        { name: 'about', title: 'About MCP Pages & ai-proxy' },
-        { name: 'spec', title: 'Read Normative Specification' },
-        { name: 'knowledge', title: 'Query ai-proxy Knowledge' },
-        { name: 'cli_skills', title: 'CLI & Skills Installation Guide' },
-        { name: 'site_tour', title: 'ai-proxy Site Tour & Navigation' },
-        { name: 'sites', title: 'List Registered Sites' },
-        { name: 'site_tools', title: 'Inspect Site Tools' }
-      ];
-      for (const spec of parsedSpecs) {
-        if (spec.server !== 'ai-proxy') continue;
-        const found = defaultSelfTools.find((t) => t.name === spec.tool);
-        if (found) {
-          permitted.push({
-            fullSpec: spec.full,
-            server: 'ai-proxy',
-            tool: found.name,
-            pageUrl: `http://127.0.0.1:${boundPort}/mcp`,
-            definition: {
-              name: found.name,
-              annotations: { title: found.title, readOnlyHint: true }
-            }
-          });
+    // Provide default ai-proxy built-in read-only tools for any permitted ai-proxy tool specs
+    // not already satisfied by a connected live tab
+    const defaultSelfTools = [
+      { name: 'about', title: 'About MCP Pages & ai-proxy' },
+      { name: 'spec', title: 'Read Normative Specification' },
+      { name: 'knowledge', title: 'Query ai-proxy Knowledge' },
+      { name: 'cli_skills', title: 'CLI & Skills Installation Guide' },
+      { name: 'site_tour', title: 'ai-proxy Site Tour & Navigation' },
+      { name: 'sites', title: 'List Registered Sites' },
+      { name: 'site_tools', title: 'Inspect Site Tools' }
+    ];
+
+    for (const spec of parsedSpecs) {
+      if (spec.server === 'ai-proxy') {
+        const alreadyHas = permitted.some((p) => p.fullSpec === spec.full);
+        if (!alreadyHas) {
+          const found = defaultSelfTools.find((t) => t.name === spec.tool);
+          if (found) {
+            permitted.push({
+              fullSpec: spec.full,
+              server: 'ai-proxy',
+              tool: found.name,
+              pageUrl: `http://127.0.0.1:${boundPort}/mcp`,
+              definition: {
+                name: found.name,
+                annotations: { title: found.title, readOnlyHint: true }
+              }
+            });
+          }
         }
       }
     }
