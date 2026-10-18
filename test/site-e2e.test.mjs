@@ -507,7 +507,7 @@ test(
 
       // Call 3: site_tools
       const siteToolsOut = await callRelayTool('site_tools', {});
-      assert.equal(siteToolsOut.tools.length, 15);
+      assert.equal(siteToolsOut.tools.length, 18);
 
       // Call 4: spec
       const specOut = await callRelayTool('spec', { topic: 'security', lang: 'zh-TW' });
@@ -515,6 +515,22 @@ test(
       assert.equal(specOut.lang, 'zh-TW');
       assert.ok(specOut.markdown.includes('安全模型'));
       assert.ok(!specOut.markdown.includes('https://<host>/<org>/<repo>/'));
+
+      // Call 4a: knowledge
+      const knowledgeOut = await callRelayTool('knowledge', { topic: 'security', lang: 'zh-TW' });
+      assert.equal(knowledgeOut.topic, 'security');
+      assert.equal(knowledgeOut.lang, 'zh-TW');
+      assert.ok(knowledgeOut.data.baselines.length >= 7);
+
+      // Call 4b: cli_skills
+      const skillsOut = await callRelayTool('cli_skills', { client: 'cli', lang: 'zh-TW' });
+      assert.equal(skillsOut.client, 'cli');
+      assert.ok(skillsOut.guide.commands.length > 0);
+
+      // Call 4c: site_tour
+      const tourOut = await callRelayTool('site_tour', { lang: 'zh-TW' });
+      assert.ok(Array.isArray(tourOut.pages));
+      assert.ok(tourOut.pages.length >= 5);
 
       // Call 5: add_site
       const addSiteOut = await callRelayTool('add_site', {
