@@ -203,7 +203,16 @@ test(
           mobile: width < 768
         });
         await page.send('Page.navigate', { url: `${baseUrl}/${urlPath}` });
-        await new Promise((r) => setTimeout(r, 450));
+        for (let attempt = 0; attempt < 30; attempt++) {
+          await new Promise((r) => setTimeout(r, 100));
+          const ready = await page
+            .evalJs(
+              `Boolean(document.readyState === 'complete' && (!document.querySelector('#home-dashboard-root') || document.querySelector('#home-dashboard-root #btn-connect-dashboard, #home-dashboard-root #admin-dashboard-authenticated')))`
+            )
+            .catch(() => false);
+          if (ready) break;
+        }
+        await new Promise((r) => setTimeout(r, 250));
         if (screenshotDir && screenshotName) {
           fs.mkdirSync(screenshotDir, { recursive: true });
           const shot = await page.send('Page.captureScreenshot', { format: 'png' });
@@ -297,16 +306,25 @@ test(
         'Clicking Connect must redirect and unlock adminKey in-place'
       );
 
-      // 4. Open authenticated dashboard.html and click every single button
+      // 4. Open authenticated dashboard.html with deep-linked add-url and click every single button
       const adminKey = relay.store.getAdminKey();
       await navigateAndCheck(
-        `dashboard.html#admin-key=${adminKey}&mcp-port=${port}`,
+        `dashboard.html#admin-key=${adminKey}&mcp-port=${port}&add-url=https%3A%2F%2Fexample.github.io%2Fcovpages%2Fmcp`,
         1280,
         900,
         'dashboard-auth-desktop.png'
       );
-      assert.equal(await page.evalJs(`window.location.hash`), '');
+      assert.equal(
+        await page.evalJs(`window.location.hash`),
+        '#add-url=https%3A%2F%2Fexample.github.io%2Fcovpages%2Fmcp',
+        'add-url is preserved in hash while admin-key is scrubbed into history.state'
+      );
       assert.equal(await page.evalJs(`window.history.state.__aiProxy.adminKey`), adminKey);
+      assert.equal(
+        await page.evalJs(`document.querySelector('#form-add-site input[name="url"]').value`),
+        'https://example.github.io/covpages/mcp',
+        'Deep-linked add-url must pre-populate #form-add-site input[name="url"]'
+      );
       assert.ok(
         (await page.evalJs(`document.querySelector('#dashboard-root h2').textContent`)).includes('MCP sites'),
         'Heading must be MCP sites (N)'
@@ -350,6 +368,7 @@ test(
         }
       }
       assert.ok(added, 'Site must appear in dashboard after addSite');
+      assert.equal(await page.evalJs(`window.location.hash`), '', 'add-url is cleaned from hash on site submit');
       assert.ok(
         relay.store.getSnapshot().allowlist.includes('https://example.github.io/demo/'),
         'Directory prefix automatically allowed'

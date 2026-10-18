@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { createModelContext } from '../web/model-context.mjs';
 import { createTabClient, probeRelay } from '../web/client.mjs';
 import { executeDirectToolQuery } from '../web/ui.mjs';
+import { getRequestedAddUrl } from '../site/dashboard.mjs';
 
 test('probeRelay sends no-cors GET request to /healthz', async () => {
   let capturedInit = null;
@@ -193,3 +194,24 @@ test('executeDirectToolQuery runs read-only tools from ?tool= and refuses non-re
   assert.equal(mutRes.executed, false);
   assert.match(mutRes.error, /read-only/i);
 });
+
+test('getRequestedAddUrl extracts add-url from hash or search query', () => {
+  assert.equal(
+    getRequestedAddUrl({ location: { hash: '#add-url=https%3A%2F%2Fexample.com%2Fmcp', search: '' } }),
+    'https://example.com/mcp'
+  );
+  assert.equal(
+    getRequestedAddUrl({ location: { hash: '#add_url=https%3A%2F%2Fexample.com%2Fmcp2', search: '' } }),
+    'https://example.com/mcp2'
+  );
+  assert.equal(
+    getRequestedAddUrl({ location: { hash: '', search: '?add=https%3A%2F%2Fexample.com%2Fmcp3' } }),
+    'https://example.com/mcp3'
+  );
+  assert.equal(
+    getRequestedAddUrl({ location: { hash: '#other=1', search: '?add-url=https%3A%2F%2Fexample.com%2Fmcp4' } }),
+    'https://example.com/mcp4'
+  );
+  assert.equal(getRequestedAddUrl({ location: { hash: '', search: '' } }), '');
+});
+

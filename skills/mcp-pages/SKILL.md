@@ -95,9 +95,23 @@ Create `mcp.html` in `<SITE_DIR>` that imports `mountMcpPageUi` from `./web/ui.m
 </html>
 ```
 
-### Step 3: Link to `mcp.html` from the Site's `index.html`
+### Step 3: Link to `mcp.html` and Add Connect Badge
 
 Add a visible link `<a href="mcp.html">MCP Page</a>` and the registration command (`npx ai-proxy add https://example.github.io/<repo>/mcp.html`) to the site's main page so readers and AI tools can discover it.
+
+In your project's `README.md`, add the standard **MCP Pages: Connect** badge:
+
+```markdown
+[![MCP Pages: Connect](https://img.shields.io/badge/MCP%20Pages-Connect-238636?logo=github&logoColor=white)](https://yongjhih.github.io/ai-proxy/dashboard.html#add-url=https%3A%2F%2F<user>.github.io%2F<repo>%2Fmcp)
+```
+
+Clicking the badge opens the `ai-proxy` dashboard with `#add-url=...`, probes the local relay (port 8788), and pre-populates the site URL.
+
+In your site's Ask AI drawer / chat assistant, when users ask about MCP or ai-proxy, offer an interactive one-click CTA button:
+
+```markdown
+[➕ 一鍵新增到 local ai-proxy](action:add-mcp?url=https://<user>.github.io/<repo>/mcp)
+```
 
 ### Step 4: Verify with `ai-proxy doctor`
 
