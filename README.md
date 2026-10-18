@@ -1,8 +1,6 @@
 # ai-proxy · MCP Pages Reference Relay & Specification
 
 [![Coverage](https://yongjhih.github.io/ai-proxy/covpages/badge.svg)](https://yongjhih.github.io/ai-proxy/covpages/)
-[![src Coverage](https://yongjhih.github.io/ai-proxy/covpages/badges/folder-src.svg)](https://yongjhih.github.io/ai-proxy/covpages/#folder=src)
-[![web Coverage](https://yongjhih.github.io/ai-proxy/covpages/badges/folder-web.svg)](https://yongjhih.github.io/ai-proxy/covpages/#folder=web)
 [![Specification](https://img.shields.io/badge/docs-specification-blue.svg)](https://yongjhih.github.io/ai-proxy/doc?d=spec)
 [![Security](https://img.shields.io/badge/security-7%20baselines-success.svg)](https://yongjhih.github.io/ai-proxy/doc?d=security)
 [![Devcontainer](https://img.shields.io/badge/devcontainer-ready-blue.svg)](.devcontainer/devcontainer.json)
