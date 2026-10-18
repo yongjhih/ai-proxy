@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { generateDefaultAssistantReply, createRelayServer } from '../src/relay.mjs';
 import { createStore } from '../src/store.mjs';
-import { formatAssistantMarkdown, initAskAiDrawer } from '../site/ask-ai.mjs';
+import { formatAssistantMarkdown, initAskAiDrawer, generateClientAssistantReply } from '../site/ask-ai.mjs';
 
 const ROOT_DIR = path.resolve(import.meta.dirname, '..');
 
@@ -241,5 +241,99 @@ test('/v1/chat/completions fallback provides default permitted read-only tools i
   assert.ok(!content.includes('Permitted read-only tools: [none]'));
   assert.ok(content.includes('mcp__ai-proxy__knowledge'));
 });
+
+test('generateDefaultAssistantReply and generateClientAssistantReply answer "mcp 是什麼？" with comprehensive explanation and action buttons', () => {
+  const queries = ['mcp 是什麼？', '什麼是 mcp', 'what is mcp', 'ai-proxy 是什麼', '什麼是 ai-proxy', 'MCP 概念與原理'];
+
+  for (const q of queries) {
+    const relayReply = generateDefaultAssistantReply(q);
+    assert.ok(relayReply.includes('Model Context Protocol'), `Failed for query "${q}" in relayReply`);
+    assert.ok(relayReply.includes('ai-proxy'), `Missing ai-proxy in relayReply for "${q}"`);
+    assert.ok(relayReply.includes('doc.html?d=spec'), `Missing spec link in relayReply for "${q}"`);
+    assert.ok(relayReply.includes('doc.html?d=security'), `Missing security link in relayReply for "${q}"`);
+    assert.ok(relayReply.includes('#quickstart'), `Missing quickstart link in relayReply for "${q}"`);
+    assert.ok(!relayReply.includes('Permitted read-only tools: [none]'), `Must not fallback to none for "${q}"`);
+
+    const clientReply = generateClientAssistantReply(q, 'zh-TW');
+    assert.ok(clientReply.includes('Model Context Protocol'), `Failed for query "${q}" in clientReply`);
+    assert.ok(clientReply.includes('#quickstart'), `Missing quickstart in clientReply for "${q}"`);
+    assert.ok(clientReply.includes('mcp.html'), `Missing mcp.html in clientReply for "${q}"`);
+  }
+
+  const enReply = generateClientAssistantReply('what is mcp?', 'en');
+  assert.ok(enReply.includes('Model Context Protocol'));
+  assert.ok(enReply.includes('zero-dependency local relay'));
+  assert.ok(enReply.includes('#quickstart'));
+});
+
+test('initAskAiDrawer renders greeting with interactive chips when history is empty, and clear button restores chips', () => {
+  const elements = new Map();
+  function makeEl(tag, id = '') {
+    const el = {
+      tagName: tag.toUpperCase(),
+      id,
+      attributes: new Map(),
+      children: [],
+      style: {},
+      innerHTML: '',
+      textContent: '',
+      setAttribute(k, v) { el.attributes.set(k, v); },
+      getAttribute(k) { return el.attributes.get(k) || null; },
+      appendChild(child) { el.children.push(child); },
+      addEventListener(event, fn) {
+        if (!el._listeners) el._listeners = new Map();
+        el._listeners.set(event, fn);
+      },
+      dispatchEvent(event) {
+        if (el._listeners && el._listeners.has(event.type)) {
+          el._listeners.get(event.type)(event);
+        }
+      },
+      focus() {},
+      scrollIntoView() {},
+      closest(sel) {
+        if (sel === '.ask-ai-chip' && el._isChip) return el;
+        return null;
+      },
+      parentNode: null
+    };
+    if (id) elements.set(id, el);
+    return el;
+  }
+
+  const triggerBtn = makeEl('button', 'ask-ai-trigger');
+  const drawer = makeEl('aside', 'ask-ai-drawer');
+  const closeBtn = makeEl('button', 'ask-ai-close');
+  const form = makeEl('form', 'ask-ai-form');
+  const input = makeEl('input', 'ask-ai-input');
+  const messagesEl = makeEl('div', 'ask-ai-messages');
+
+  const fakeDoc = {
+    getElementById(id) { return elements.get(id) || null; },
+    createElement(tag) { return makeEl(tag); },
+    querySelector() { return null; }
+  };
+
+  const fakeWin = {
+    document: fakeDoc,
+    sessionStorage: {
+      getItem() { return null; },
+      setItem() {},
+      removeItem() {}
+    },
+    location: { href: 'http://localhost/index.html', origin: 'http://localhost' }
+  };
+
+  const drawerCtrl = initAskAiDrawer({ lang: 'zh-TW', win: fakeWin });
+  assert.ok(drawerCtrl);
+
+  // When history is empty, messagesEl should contain the greeting with chips
+  assert.equal(messagesEl.children.length, 1);
+  const greetingEl = messagesEl.children[0];
+  assert.ok(greetingEl.innerHTML.includes('ask-ai-chips'));
+  assert.ok(greetingEl.innerHTML.includes('data-ask="mcp 是什麼？"'));
+  assert.ok(greetingEl.innerHTML.includes('data-ask="快速上手指南"'));
+});
+
 
 
