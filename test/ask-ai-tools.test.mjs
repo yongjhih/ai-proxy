@@ -335,5 +335,104 @@ test('initAskAiDrawer renders greeting with interactive chips when history is em
   assert.ok(greetingEl.innerHTML.includes('data-ask="快速上手指南"'));
 });
 
+test('formatAssistantMarkdown renders full markdown headers, horizontal rule, bold, italic, and lists', () => {
+  const md = [
+    '### 常見指令速覽',
+    '---',
+    '**啟動轉送服務** 支援 *斜體* 與 ~~刪除線~~：',
+    '1. 第一步執行 `npx ai-proxy`',
+    '2. 第二步在瀏覽器開啟',
+    '',
+    '- 無序列表項目'
+  ].join('\n');
+
+  const html = formatAssistantMarkdown(md);
+  assert.ok(html.includes('<h3>常見指令速覽</h3>'), 'Should render h3');
+  assert.ok(html.includes('<hr />'), 'Should render hr');
+  assert.ok(html.includes('<strong>啟動轉送服務</strong>'), 'Should render bold');
+  assert.ok(html.includes('<em>斜體</em>'), 'Should render italic');
+  assert.ok(html.includes('<del>刪除線</del>'), 'Should render strikethrough');
+  assert.ok(html.includes('<ol>'), 'Should render ordered list <ol>');
+  assert.ok(html.includes('<li>第一步執行 <code>npx ai-proxy</code></li>'), 'Should render ol li');
+  assert.ok(html.includes('</ol>'), 'Should close ordered list </ol>');
+  assert.ok(html.includes('<ul>'), 'Should render unordered list <ul>');
+});
+
+test('initAskAiDrawer renders raw toggle button and hidden raw markdown container for assistant messages', () => {
+  const store = new Map();
+  const fakeSessionStorage = {
+    getItem(k) { return store.get(k) || null; },
+    setItem(k, v) { store.set(k, String(v)); },
+    removeItem(k) { store.delete(k); }
+  };
+  const elements = new Map();
+  function makeEl(tag, id = '') {
+    const el = {
+      tagName: tag.toUpperCase(),
+      id,
+      attributes: new Map(),
+      children: [],
+      style: {},
+      innerHTML: '',
+      textContent: '',
+      setAttribute(k, v) { el.attributes.set(k, v); },
+      getAttribute(k) { return el.attributes.get(k) || null; },
+      appendChild(child) { el.children.push(child); },
+      addEventListener() {},
+      focus() {},
+      scrollIntoView() {},
+      closest() { return null; },
+      parentNode: null
+    };
+    if (id) elements.set(id, el);
+    return el;
+  }
+
+  fakeSessionStorage.setItem(
+    'ai_proxy_ask_ai_history',
+    JSON.stringify([
+      { role: 'user', content: 'hello' },
+      { role: 'assistant', content: '### Title\n\n**Bold response**' }
+    ])
+  );
+
+  const triggerBtn = makeEl('button', 'ask-ai-trigger');
+  const drawer = makeEl('aside', 'ask-ai-drawer');
+  const closeBtn = makeEl('button', 'ask-ai-close');
+  const form = makeEl('form', 'ask-ai-form');
+  const input = makeEl('input', 'ask-ai-input');
+  const messagesEl = makeEl('div', 'ask-ai-messages');
+
+  const fakeDoc = {
+    getElementById(id) { return elements.get(id) || null; },
+    createElement(tag) { return makeEl(tag); },
+    querySelector() { return null; }
+  };
+
+  const fakeWin = {
+    document: fakeDoc,
+    sessionStorage: fakeSessionStorage,
+    localStorage: {
+      getItem(k) { return k === 'ai_proxy_endpoint' ? 'http://127.0.0.1:9099' : null; },
+      setItem() {},
+      removeItem() {}
+    },
+    location: { href: 'http://localhost/doc.html' }
+  };
+
+  const drawerCtrl = initAskAiDrawer({ lang: 'en', win: fakeWin });
+  assert.ok(drawerCtrl);
+  assert.equal(typeof drawerCtrl.updateConnectionStatus, 'function');
+
+  // Verify assistant message contains raw toggle button and both rendered and raw content containers
+  const assistantBubble = messagesEl.children[1];
+  assert.ok(assistantBubble.innerHTML.includes('class="ask-ai-raw-toggle"'));
+  assert.ok(assistantBubble.innerHTML.includes('class="ask-ai-rendered-content"'));
+  assert.ok(assistantBubble.innerHTML.includes('class="ask-ai-raw-content"'));
+  assert.ok(assistantBubble.innerHTML.includes('### Title'));
+  assert.ok(assistantBubble.innerHTML.includes('<h3>Title</h3>'));
+  assert.ok(assistantBubble.innerHTML.includes('<strong>Bold response</strong>'));
+});
+
 
 

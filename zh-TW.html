@@ -259,8 +259,26 @@ sequenceDiagram
 
   <aside class="ask-ai-drawer" id="ask-ai-drawer" data-open="false" aria-hidden="true" aria-label="問 AI 助手">
     <div class="ask-ai-header">
-      <strong>問 AI（本機 /v1 對話示範）</strong>
-      <button type="button" class="btn btn-sm" id="ask-ai-close">關閉</button>
+      <div style="display:flex;align-items:center;gap:0.5rem;">
+        <span class="ask-ai-status-dot" id="ask-ai-status-dot" title="ai-proxy: 檢查連線中..."></span>
+        <strong>Ask AI</strong>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.375rem;">
+        <button type="button" class="btn btn-sm" id="ask-ai-settings-btn" title="設定" aria-label="設定">⚙️</button>
+        <button type="button" class="btn btn-sm" id="ask-ai-close">關閉</button>
+      </div>
+    </div>
+    <div class="ask-ai-settings" id="ask-ai-settings-panel">
+      <form id="ask-ai-settings-form" style="display:flex;flex-direction:column;gap:0.5rem;">
+        <label style="font-weight:600;font-size:0.75rem;">
+          ai-proxy 服務網址：
+          <input type="url" id="ask-ai-endpoint-input" placeholder="http://127.0.0.1:8788" class="form-control input-sm" style="width:100%;box-sizing:border-box;margin-top:0.25rem;" />
+        </label>
+        <div style="display:flex;gap:0.5rem;justify-content:flex-end;">
+          <button type="button" class="btn btn-sm" id="ask-ai-settings-reset">重設</button>
+          <button type="submit" class="btn btn-sm btn-primary">儲存</button>
+        </div>
+      </form>
     </div>
     <div class="ask-ai-messages" id="ask-ai-messages">
       <div class="ask-ai-msg ask-ai-msg-assistant">

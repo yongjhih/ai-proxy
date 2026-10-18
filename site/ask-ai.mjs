@@ -30,19 +30,23 @@ export function formatAssistantMarkdown(markdown) {
   const result = [];
   let inCodeBlock = false;
   let codeBlockLines = [];
-  let inList = false;
+  let inUl = false;
+  let inOl = false;
 
-  function closeList() {
-    if (inList) {
+  function closeLists() {
+    if (inUl) {
       result.push('</ul>');
-      inList = false;
+      inUl = false;
+    }
+    if (inOl) {
+      result.push('</ol>');
+      inOl = false;
     }
   }
 
   function formatInline(text) {
     let out = escapeHtml(text);
 
-    // Replace Markdown links [Text](Url)
     // 1) Action CTA buttons: [Text](action:...)
     out = out.replace(
       /\[([^\]]+)\]\((action:[^)]+)\)/g,
@@ -67,6 +71,16 @@ export function formatAssistantMarkdown(markdown) {
     // 4) Inline code `code`
     out = out.replace(/`([^`]+)`/g, '<code>$1</code>');
 
+    // 5) Bold: **text** or __text__
+    out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    out = out.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+
+    // 6) Italic: *text* or _text_
+    out = out.replace(/(^|[^\*])\*([^*\n]+)\*([^\*]|$)/g, '$1<em>$2</em>$3');
+
+    // 7) Strikethrough: ~~text~~
+    out = out.replace(/~~([^~]+)~~/g, '<del>$1</del>');
+
     return out;
   }
 
@@ -81,7 +95,7 @@ export function formatAssistantMarkdown(markdown) {
         codeBlockLines = [];
         inCodeBlock = false;
       } else {
-        closeList();
+        closeLists();
         inCodeBlock = true;
       }
       continue;
@@ -92,21 +106,57 @@ export function formatAssistantMarkdown(markdown) {
     }
 
     if (!trimmed) {
-      closeList();
+      closeLists();
       continue;
     }
 
-    // List item
-    if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
-      if (!inList) {
-        result.push('<ul>');
-        inList = true;
+    // Horizontal rule: ---, ***, ___
+    if (/^(\s*[-*_]\s*){3,}$/.test(trimmed)) {
+      closeLists();
+      result.push('<hr />');
+      continue;
+    }
+
+    // Headers: # H1, ## H2, ### H3, #### H4
+    const headerMatch = /^(#{1,4})\s+(.*)$/.exec(trimmed);
+    if (headerMatch) {
+      closeLists();
+      const level = headerMatch[1].length;
+      result.push(`<h${level}>${formatInline(headerMatch[2])}</h${level}>`);
+      continue;
+    }
+
+    // Unordered list item: - item or * item
+    if (/^[-*+]\s+(.*)$/.test(trimmed)) {
+      const match = /^[-*+]\s+(.*)$/.exec(trimmed);
+      if (inOl) {
+        result.push('</ol>');
+        inOl = false;
       }
-      result.push(`<li>${formatInline(trimmed.slice(2))}</li>`);
+      if (!inUl) {
+        result.push('<ul>');
+        inUl = true;
+      }
+      result.push(`<li>${formatInline(match[1])}</li>`);
       continue;
     }
 
-    closeList();
+    // Ordered list item: 1. item
+    if (/^\d+\.\s+(.*)$/.test(trimmed)) {
+      const match = /^\d+\.\s+(.*)$/.exec(trimmed);
+      if (inUl) {
+        result.push('</ul>');
+        inUl = false;
+      }
+      if (!inOl) {
+        result.push('<ol>');
+        inOl = true;
+      }
+      result.push(`<li>${formatInline(match[1])}</li>`);
+      continue;
+    }
+
+    closeLists();
 
     // Blockquote
     if (trimmed.startsWith('> ')) {
@@ -118,7 +168,7 @@ export function formatAssistantMarkdown(markdown) {
     result.push(`<p>${formatInline(rawLine)}</p>`);
   }
 
-  closeList();
+  closeLists();
   if (inCodeBlock && codeBlockLines.length > 0) {
     result.push(`<pre><code>${escapeHtml(codeBlockLines.join('\n'))}</code></pre>`);
   }
@@ -615,6 +665,71 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
     }
   }
 
+  function getAiProxyEndpoint() {
+    let custom = '';
+    try {
+      if (win.localStorage) custom = win.localStorage.getItem('ai_proxy_endpoint') || '';
+    } catch {}
+    if (custom) return custom.replace(/\/+$/, '');
+
+    const hs = extractHandshake(win);
+    const urlPort = win && win.location && win.location.port ? Number.parseInt(win.location.port, 10) : 0;
+    const port = hs.mcpPort !== 8788 ? hs.mcpPort : urlPort || 8788;
+    return `http://127.0.0.1:${port}`;
+  }
+
+  function renderAssistantBubble(div, markdown) {
+    const raw = String(markdown || '');
+    const html = formatAssistantMarkdown(raw);
+    div.innerHTML = [
+      '<div class="ask-ai-msg-header">',
+      '  <button type="button" class="ask-ai-raw-toggle" title="Toggle Raw / Preview">Raw</button>',
+      '</div>',
+      `<div class="ask-ai-rendered-content">${html}</div>`,
+      `<pre class="ask-ai-raw-content" style="display:none;">${escapeHtml(raw)}</pre>`
+    ].join('\n');
+  }
+
+  function appendThinkingMessage() {
+    const div = doc.createElement('div');
+    div.className = 'ask-ai-msg ask-ai-msg-assistant';
+    div.innerHTML = [
+      '<div class="ask-ai-thinking">',
+      '  <span class="ask-ai-thinking-spinner"></span>',
+      `  <span>${lang === 'zh-TW' ? '思考中' : 'Thinking'}<span class="ask-ai-thinking-dots"><span>.</span><span>.</span><span>.</span></span></span>`,
+      '</div>'
+    ].join('\n');
+    messagesEl.appendChild(div);
+    ensureScrollBottom(messagesEl, true);
+    return div;
+  }
+
+  async function updateConnectionStatus() {
+    const dot = doc.getElementById('ask-ai-status-dot');
+    if (!dot) return;
+    const endpoint = getAiProxyEndpoint();
+    try {
+      const controller = typeof win.AbortController === 'function' ? new win.AbortController() : null;
+      const timer = setTimeout(() => {
+        if (controller) controller.abort();
+      }, 2000);
+      await fetch(`${endpoint}/healthz`, {
+        method: 'GET',
+        mode: 'no-cors',
+        cache: 'no-store',
+        signal: controller ? controller.signal : undefined
+      });
+      clearTimeout(timer);
+      dot.className = 'ask-ai-status-dot connected';
+      dot.setAttribute('title', `ai-proxy: Connected (${endpoint})`);
+      dot.setAttribute('aria-label', `ai-proxy: Connected (${endpoint})`);
+    } catch {
+      dot.className = 'ask-ai-status-dot disconnected';
+      dot.setAttribute('title', `ai-proxy: Disconnected (${endpoint})`);
+      dot.setAttribute('aria-label', `ai-proxy: Disconnected (${endpoint})`);
+    }
+  }
+
   const messageHistory = loadStoredHistory();
 
   // If there is existing conversation history, render it; otherwise render default greeting with chips
@@ -626,7 +741,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
       if (item.role === 'user') {
         div.textContent = item.content;
       } else {
-        div.innerHTML = formatAssistantMarkdown(item.content);
+        renderAssistantBubble(div, item.content);
       }
       messagesEl.appendChild(div);
     }
@@ -649,6 +764,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
     }
     if (open) {
       input.focus();
+      updateConnectionStatus();
     }
   }
 
@@ -675,6 +791,37 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
     closeBtn.addEventListener('click', () => setOpen(false));
   }
 
+  // Header controls & Settings injection
+  const header = (typeof drawer.querySelector === 'function' ? drawer.querySelector('.ask-ai-header') : null) || (drawer.children && drawer.children[0]);
+  if (header) {
+    const titleEl = typeof header.querySelector === 'function' ? header.querySelector('strong') : null;
+    if (titleEl) {
+      titleEl.textContent = 'Ask AI';
+    }
+    let statusDot = doc.getElementById('ask-ai-status-dot');
+    if (!statusDot && titleEl && titleEl.parentNode) {
+      statusDot = doc.createElement('span');
+      statusDot.className = 'ask-ai-status-dot';
+      statusDot.id = 'ask-ai-status-dot';
+      statusDot.setAttribute('title', 'ai-proxy: Checking...');
+      titleEl.parentNode.insertBefore(statusDot, titleEl);
+    }
+  }
+
+  // Inject Settings button next to Clear / Close button
+  let settingsBtn = doc.getElementById('ask-ai-settings-btn');
+  if (!settingsBtn && closeBtn && closeBtn.parentNode) {
+    settingsBtn = doc.createElement('button');
+    settingsBtn.type = 'button';
+    settingsBtn.className = 'btn btn-sm';
+    settingsBtn.id = 'ask-ai-settings-btn';
+    settingsBtn.setAttribute('title', 'Settings');
+    settingsBtn.setAttribute('aria-label', 'Settings');
+    settingsBtn.style.marginRight = '0.375rem';
+    settingsBtn.textContent = '⚙️';
+    closeBtn.parentNode.insertBefore(settingsBtn, closeBtn);
+  }
+
   // Inject Clear History button next to Close button if not present
   let clearBtn = doc.getElementById('ask-ai-clear');
   if (!clearBtn && closeBtn && closeBtn.parentNode) {
@@ -695,10 +842,94 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
     });
   }
 
+  // Inject Settings panel inside drawer if not present
+  let settingsPanel = doc.getElementById('ask-ai-settings-panel');
+  if (!settingsPanel && header && header.parentNode) {
+    settingsPanel = doc.createElement('div');
+    settingsPanel.className = 'ask-ai-settings';
+    settingsPanel.id = 'ask-ai-settings-panel';
+    settingsPanel.innerHTML = [
+      '<form id="ask-ai-settings-form" style="display:flex;flex-direction:column;gap:0.5rem;">',
+      '  <label style="font-weight:600;font-size:0.75rem;">',
+      `    ${lang === 'zh-TW' ? 'ai-proxy 服務網址：' : 'ai-proxy URL:'}`,
+      '    <input type="url" id="ask-ai-endpoint-input" placeholder="http://127.0.0.1:8788" class="form-control input-sm" style="width:100%;box-sizing:border-box;margin-top:0.25rem;" />',
+      '  </label>',
+      '  <div style="display:flex;gap:0.5rem;justify-content:flex-end;">',
+      `    <button type="button" class="btn btn-sm" id="ask-ai-settings-reset">${lang === 'zh-TW' ? '重設' : 'Reset'}</button>`,
+      `    <button type="submit" class="btn btn-sm btn-primary">${lang === 'zh-TW' ? '儲存' : 'Save'}</button>`,
+      '  </div>',
+      '</form>'
+    ].join('\n');
+    if (header.nextSibling) {
+      header.parentNode.insertBefore(settingsPanel, header.nextSibling);
+    } else {
+      header.parentNode.appendChild(settingsPanel);
+    }
+  }
+
+  if (settingsBtn && settingsPanel) {
+    settingsBtn.addEventListener('click', () => {
+      const isOpen = settingsPanel.classList.toggle('open');
+      if (isOpen) {
+        const inputEl = doc.getElementById('ask-ai-endpoint-input');
+        if (inputEl) {
+          let custom = '';
+          try {
+            if (win.localStorage) custom = win.localStorage.getItem('ai_proxy_endpoint') || '';
+          } catch {}
+          inputEl.value = custom || getAiProxyEndpoint();
+          inputEl.focus();
+        }
+      }
+    });
+  }
+
+  const settingsForm = doc.getElementById('ask-ai-settings-form');
+  if (settingsForm) {
+    settingsForm.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const inputEl = doc.getElementById('ask-ai-endpoint-input');
+      const val = inputEl ? inputEl.value.trim() : '';
+      try {
+        if (win.localStorage) {
+          if (val) {
+            win.localStorage.setItem('ai_proxy_endpoint', val);
+          } else {
+            win.localStorage.removeItem('ai_proxy_endpoint');
+          }
+        }
+      } catch {}
+      if (settingsPanel) settingsPanel.classList.remove('open');
+      updateConnectionStatus();
+    });
+  }
+
+  const settingsResetBtn = doc.getElementById('ask-ai-settings-reset');
+  if (settingsResetBtn) {
+    settingsResetBtn.addEventListener('click', () => {
+      try {
+        if (win.localStorage) win.localStorage.removeItem('ai_proxy_endpoint');
+      } catch {}
+      const inputEl = doc.getElementById('ask-ai-endpoint-input');
+      if (inputEl) inputEl.value = getAiProxyEndpoint();
+      if (settingsPanel) settingsPanel.classList.remove('open');
+      updateConnectionStatus();
+    });
+  }
+
+  // Periodic and initial connection status check
+  updateConnectionStatus();
+  if (win && typeof win.setInterval === 'function') {
+    win.setInterval(updateConnectionStatus, 15000);
+  }
+
   function appendMessage(role, textOrHtml, isHtml = false, rawMarkdown = null, persist = true) {
     const div = doc.createElement('div');
     div.className = `ask-ai-msg ${role === 'user' ? 'ask-ai-msg-user' : 'ask-ai-msg-assistant'}`;
-    if (isHtml) {
+    if (role === 'assistant') {
+      const markdown = rawMarkdown !== null ? rawMarkdown : textOrHtml;
+      renderAssistantBubble(div, markdown);
+    } else if (isHtml) {
       div.innerHTML = textOrHtml;
     } else {
       div.textContent = textOrHtml;
@@ -716,8 +947,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
   }
 
   function appendAssistantFormatted(markdown, persist = true) {
-    const html = formatAssistantMarkdown(markdown);
-    return appendMessage('assistant', html, true, markdown, persist);
+    return appendMessage('assistant', markdown, false, markdown, persist);
   }
 
   function focusAndHighlight(selector) {
@@ -818,8 +1048,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
     const params = new URLSearchParams(queryString || '');
 
     const hs = extractHandshake(win);
-    const urlPort = win && win.location && win.location.port ? Number.parseInt(win.location.port, 10) : 0;
-    const port = hs.mcpPort !== 8788 ? hs.mcpPort : urlPort || 8788;
+    const endpoint = getAiProxyEndpoint();
 
     if (actionName === 'connect') {
       const redirectUrl = win.location.href;
@@ -830,7 +1059,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
       }
       const addUrl = params.get('add-url') || params.get('add_url') || params.get('add');
       const addQuery = addUrl ? `&add-url=${encodeURIComponent(addUrl)}` : '';
-      win.location.href = `http://127.0.0.1:${port}/admin/v1/open-dashboard?redirect=${encodeURIComponent(
+      win.location.href = `${endpoint}/admin/v1/open-dashboard?redirect=${encodeURIComponent(
         redirectUrl
       )}${addQuery}`;
       return;
@@ -869,7 +1098,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
         const allowOrigin = originParam === null ? true : originParam !== 'false';
         const prefixParam = params.get('allowPrefix');
         const allowPrefix = prefixParam === null ? true : prefixParam !== 'false';
-        const res = await fetch(`http://127.0.0.1:${port}/admin/v1/sites`, {
+        const res = await fetch(`${endpoint}/admin/v1/sites`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -896,7 +1125,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
       } else if (actionName === 'set-permission') {
         const url = params.get('url');
         const write = params.get('write') === 'true';
-        const res = await fetch(`http://127.0.0.1:${port}/admin/v1/sites/permission`, {
+        const res = await fetch(`${endpoint}/admin/v1/sites/permission`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -918,7 +1147,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
         );
       } else if (actionName === 'remove-mcp' || actionName === 'remove-site') {
         const url = params.get('url');
-        const res = await fetch(`http://127.0.0.1:${port}/admin/v1/sites`, {
+        const res = await fetch(`${endpoint}/admin/v1/sites`, {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
@@ -940,7 +1169,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
         );
       } else if (actionName === 'allow-origin') {
         const origin = params.get('origin');
-        const res = await fetch(`http://127.0.0.1:${port}/admin/v1/origins`, {
+        const res = await fetch(`${endpoint}/admin/v1/origins`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -962,7 +1191,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
         );
       } else if (actionName === 'deny-origin') {
         const origin = params.get('origin');
-        const res = await fetch(`http://127.0.0.1:${port}/admin/v1/origins`, {
+        const res = await fetch(`${endpoint}/admin/v1/origins`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -992,6 +1221,29 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
 
   // Delegate clicks on interactive buttons & links within messages
   messagesEl.addEventListener('click', (ev) => {
+    const rawToggle = ev.target.closest('.ask-ai-raw-toggle');
+    if (rawToggle) {
+      ev.preventDefault();
+      const parentMsg = rawToggle.closest('.ask-ai-msg-assistant');
+      if (parentMsg) {
+        const rendered = parentMsg.querySelector('.ask-ai-rendered-content');
+        const raw = parentMsg.querySelector('.ask-ai-raw-content');
+        if (rendered && raw) {
+          const isRaw = raw.style.display !== 'none';
+          if (isRaw) {
+            raw.style.display = 'none';
+            rendered.style.display = '';
+            rawToggle.textContent = 'Raw';
+          } else {
+            raw.style.display = 'block';
+            rendered.style.display = 'none';
+            rawToggle.textContent = 'Preview';
+          }
+        }
+      }
+      return;
+    }
+
     const chip = ev.target.closest('.ask-ai-chip');
     if (chip) {
       ev.preventDefault();
@@ -1044,15 +1296,32 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
     }
   });
 
+  let currentAbortController = null;
+  const submitBtn = (form.querySelector && form.querySelector('button[type="submit"]')) || (form.querySelector && form.querySelector('button'));
+  const originalSubmitText = submitBtn ? submitBtn.textContent : (lang === 'zh-TW' ? '送出' : 'Send');
+
+  if (submitBtn) {
+    submitBtn.addEventListener('click', (ev) => {
+      if (currentAbortController) {
+        ev.preventDefault();
+        currentAbortController.abort();
+      }
+    });
+  }
+
   form.addEventListener('submit', async (ev) => {
     ev.preventDefault();
+    if (currentAbortController) {
+      currentAbortController.abort();
+      return;
+    }
+
     const prompt = input.value.trim();
     if (!prompt) return;
     input.value = '';
 
     appendMessage('user', prompt);
-    const pendingEl = appendMessage('assistant', '…', false, null, false);
-    ensureScrollBottom(messagesEl, true);
+    const pendingEl = appendThinkingMessage();
 
     // Auto-detect jump/navigation requests and trigger page navigation immediately
     if (/(?:跳轉|前往|打開|跳到|查看|jump to|go to|open)/i.test(prompt)) {
@@ -1069,10 +1338,17 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
       }
     }
 
+    currentAbortController = typeof win.AbortController === 'function' ? new win.AbortController() : null;
+    if (submitBtn) {
+      submitBtn.textContent = lang === 'zh-TW' ? '■ 停止' : '■ Stop';
+      if (submitBtn.classList) {
+        submitBtn.classList.add('btn-danger');
+        submitBtn.classList.remove('btn-primary');
+      }
+    }
+
     try {
-      const hs = extractHandshake(win);
-      const urlPort = win && win.location && win.location.port ? Number.parseInt(win.location.port, 10) : 0;
-      const port = hs.mcpPort !== 8788 ? hs.mcpPort : urlPort || 8788;
+      const endpoint = getAiProxyEndpoint();
 
       let askSessionId = 'default';
       try {
@@ -1095,7 +1371,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
         recentMessages.push({ role: 'user', content: prompt });
       }
 
-      const res = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+      const res = await fetch(`${endpoint}/v1/chat/completions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1113,7 +1389,8 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
             ...recentMessages
           ],
           stream: false
-        })
+        }),
+        signal: currentAbortController ? currentAbortController.signal : undefined
       });
 
       const data = await res.json();
@@ -1123,7 +1400,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
           `HTTP ${res.status}: Origin not authorized on /v1. Run: \`npx ai-proxy allow-origin ${win.location ? win.location.origin : ''}\``;
         const clientAnswer = generateClientAssistantReply(prompt, lang);
         const combined = `${clientAnswer}\n\n> ⚠️ *${errorText}*\n\n[🔌 接上本機 ai-proxy (Connect)](action:connect)`;
-        pendingEl.innerHTML = formatAssistantMarkdown(combined);
+        renderAssistantBubble(pendingEl, combined);
         messageHistory.push({ role: 'assistant', content: sanitizeForStorage(combined) });
         saveStoredHistory(messageHistory);
         ensureScrollBottom(messagesEl, true);
@@ -1144,22 +1421,40 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
         replyContent = generateClientAssistantReply(prompt, lang);
       }
 
-      pendingEl.innerHTML = formatAssistantMarkdown(replyContent);
+      renderAssistantBubble(pendingEl, replyContent);
       messageHistory.push({ role: 'assistant', content: sanitizeForStorage(replyContent) });
       saveStoredHistory(messageHistory);
       ensureScrollBottom(messagesEl, true);
     } catch {
+      if (currentAbortController && currentAbortController.signal && currentAbortController.signal.aborted) {
+        const stoppedText = lang === 'zh-TW' ? '⏹️ 已停止思考。' : '⏹️ Thinking stopped.';
+        renderAssistantBubble(pendingEl, stoppedText);
+        messageHistory.push({ role: 'assistant', content: sanitizeForStorage(stoppedText) });
+        saveStoredHistory(messageHistory);
+        ensureScrollBottom(messagesEl, true);
+        return;
+      }
+
       const clientAnswer = generateClientAssistantReply(prompt, lang);
       const offlineNote =
         lang === 'zh-TW'
           ? `${clientAnswer}\n\n> 💡 本機 ai-proxy 未連線或目前 Origin 尚未授權。\n\n[🔌 接上本機 ai-proxy (Connect)](action:connect)`
           : `${clientAnswer}\n\n> 💡 Local ai-proxy is not connected or Origin is unauthorized.\n\n[🔌 Connect to local ai-proxy](action:connect)`;
-      pendingEl.innerHTML = formatAssistantMarkdown(offlineNote);
+      renderAssistantBubble(pendingEl, offlineNote);
       messageHistory.push({ role: 'assistant', content: sanitizeForStorage(offlineNote) });
       saveStoredHistory(messageHistory);
       ensureScrollBottom(messagesEl, true);
+    } finally {
+      currentAbortController = null;
+      if (submitBtn) {
+        submitBtn.textContent = originalSubmitText;
+        if (submitBtn.classList) {
+          submitBtn.classList.remove('btn-danger');
+          submitBtn.classList.add('btn-primary');
+        }
+      }
     }
   });
 
-  return { setOpen, focusAndHighlight, handleJump, triggerDashboardRefresh };
+  return { setOpen, focusAndHighlight, handleJump, triggerDashboardRefresh, updateConnectionStatus };
 }
