@@ -1,0 +1,33 @@
+{
+  "name": "ai-proxy",
+  "version": "1.0.0",
+  "description": "Reference local relay and WebMCP library for MCP Pages",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "ai-proxy": "./bin/ai-proxy.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs",
+    "./web/*": "./web/*"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "web/",
+    "site/",
+    "docs/",
+    "skills/",
+    "index.html",
+    "zh-TW.html",
+    "doc.html",
+    "dashboard.html",
+    "mcp.html"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
