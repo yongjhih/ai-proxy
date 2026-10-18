@@ -61,10 +61,6 @@
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25ZM7.25 8a.749.749 0 0 1-.22.53l-2.25 2.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L5.44 8 3.72 6.28a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l2.25 2.25c.141.14.22.331.22.53Zm1.5 1.5h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1 0-1.5Z"></path></svg>
           <span>本站 MCP 頁 (6 工具)</span>
         </a>
-        <a class="nav-link" href="covpages/">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 1.75V13.5h13.75a.75.75 0 0 1 0 1.5H.75a.75.75 0 0 1-.75-.75V1.75a.75.75 0 0 1 1.5 0Zm14.28 2.53-5.25 5.25a.75.75 0 0 1-1.06 0L7 7.06 4.28 9.78a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l3.25-3.25a.75.75 0 0 1 1.06 0L10 7.94l4.72-4.72a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042Z"></path></svg>
-          <span>測試覆蓋率</span>
-        </a>
       </nav>
     </div>
   </header>
@@ -98,7 +94,6 @@
             <a class="btn btn-primary" href="dashboard">開啟儀表板</a>
             <a class="btn" href="doc?d=zh-TW/spec">閱讀規範文件</a>
             <a class="btn" href="mcp">檢視本站的 MCP 頁</a>
-            <a class="btn" href="covpages/">覆蓋率報告</a>
           </div>
         </div>
       </div>
@@ -117,7 +112,7 @@
 npx ai-proxy serve
 
 # 2. 將本站的 MCP 頁加入允許清單並註冊到 Claude Code
-npx ai-proxy add https://&lt;host&gt;/&lt;org&gt;/&lt;repo&gt;/mcp --name ai-proxy-docs
+npx ai-proxy add https://&lt;host&gt;/&lt;org&gt;/&lt;repo&gt;/mcp --name ai-proxy
 
 # 3. 開啟帶管理金鑰的本機儀表板分頁
 npx ai-proxy open dashboard</code></pre>
@@ -128,6 +123,20 @@ npx ai-proxy open dashboard</code></pre>
         </p>
         <pre><code>npx ai-proxy vendor --out ./vendor/ai-proxy-web
 npx ai-proxy doctor --dir .</code></pre>
+      </div>
+    </section>
+
+    <section aria-labelledby="live-dashboard-title">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.75rem;">
+        <h2 id="live-dashboard-title" style="margin:0;">ai-proxy 本機轉送管理儀表板</h2>
+        <a class="btn btn-sm" href="dashboard">開啟獨立儀表板頁</a>
+      </div>
+      <div id="home-dashboard-root" aria-live="polite">
+        <div class="primer-box">
+          <div class="primer-box-row">
+            <span class="mono">正在偵測本機 ai-proxy 轉送服務...</span>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -350,6 +359,10 @@ sequenceDiagram
   </script>
   <script type="module">
     import { initAskAiDrawer } from './site/ask-ai.mjs';
+    import { mountAdminDashboard } from './site/dashboard.mjs';
+    import { highlightAllCodeBlocks } from './site/syntax.mjs';
+    highlightAllCodeBlocks();
+    mountAdminDashboard({ container: document.getElementById('home-dashboard-root') });
     initAskAiDrawer({ lang: 'zh-TW' });
   </script>
 </body>

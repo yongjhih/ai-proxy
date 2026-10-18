@@ -284,17 +284,13 @@ export async function initSelfMcpPage({
 
   let adminCtrl = null;
   if (adminContainer) {
-    if (hs.adminKey) {
-      adminContainer.hidden = false;
-      adminCtrl = await mountAdminDashboard({
-        container: adminContainer,
-        adminKey: hs.adminKey,
-        mcpPort,
-        win
-      });
-    } else {
-      adminContainer.hidden = true;
-    }
+    adminContainer.hidden = false;
+    adminCtrl = await mountAdminDashboard({
+      container: adminContainer,
+      adminKey: hs.adminKey,
+      mcpPort,
+      win
+    });
   }
 
   return {

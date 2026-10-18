@@ -20,7 +20,7 @@ Start the local relay and register this site's MCP page in your AI tool:
 
 ```bash
 npx ai-proxy serve
-npx ai-proxy add https://<host>/<org>/<repo>/mcp --name ai-proxy-docs
+npx ai-proxy add https://<host>/<org>/<repo>/mcp --name ai-proxy
 ```
 
 Or connect any example static site:

@@ -434,6 +434,75 @@ pre code {
   font-size: inherit;
 }
 
+/* Syntax Highlighting */
+.syn-comment {
+  color: var(--fg-muted);
+  font-style: italic;
+}
+
+.syn-cmd {
+  color: var(--accent-fg);
+  font-weight: 600;
+}
+
+.syn-subcmd {
+  color: #8250df;
+}
+
+[data-theme="dark"] .syn-subcmd,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .syn-subcmd {
+    color: #d2a8ff;
+  }
+}
+
+.syn-flag {
+  color: #9a6700;
+}
+
+[data-theme="dark"] .syn-flag,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .syn-flag {
+    color: #f0883e;
+  }
+}
+
+.syn-url {
+  color: var(--accent-fg);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.syn-string {
+  color: var(--success-fg);
+}
+
+.syn-key {
+  color: var(--accent-fg);
+}
+
+.syn-keyword {
+  color: #cf222e;
+}
+
+[data-theme="dark"] .syn-keyword,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .syn-keyword {
+    color: #ff7b72;
+  }
+}
+
+.syn-num {
+  color: #0550ae;
+}
+
+[data-theme="dark"] .syn-num,
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .syn-num {
+    color: #79c0ff;
+  }
+}
+
 /* Primer Box & Bordered Ledger Lists (Never nested cards) */
 .primer-box {
   border: 1px solid var(--border-default);

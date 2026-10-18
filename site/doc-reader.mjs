@@ -3,6 +3,8 @@
  * runtime base URL substitution (https://<host>/<org>/<repo>/), and Mermaid diagram rendering.
  */
 
+import { highlightCode } from './syntax.mjs';
+
 const VALID_DOCS = new Set([
   'index',
   'spec',
@@ -91,8 +93,9 @@ export function renderMarkdownToHtml(markdownText, siteBaseUrl) {
         if (codeLang === 'mermaid') {
           html.push(`<div class="mermaid">${escapeHtml(rawCode)}</div>`);
         } else {
+          const highlighted = highlightCode(rawCode, codeLang || 'bash');
           html.push(
-            `<pre><code class="lang-${escapeHtml(codeLang || 'text')}">${escapeHtml(rawCode)}</code></pre>`
+            `<pre><code class="lang-${escapeHtml(codeLang || 'text')}" data-highlighted="true">${highlighted}</code></pre>`
           );
         }
         inCodeBlock = false;

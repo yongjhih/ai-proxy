@@ -777,6 +777,7 @@ export function createRelayServer({
     const selfOrigins = [
       `http://127.0.0.1:${boundPort}`,
       `http://localhost:${boundPort}`,
+      'https://yongjhih.github.io',
       ...dashboardOrigins
     ];
 
@@ -873,6 +874,7 @@ export function createRelayServer({
       const allowedDashboardOrigins = [
         `http://127.0.0.1:${boundPort}`,
         `http://localhost:${boundPort}`,
+        'https://yongjhih.github.io',
         ...dashboardOrigins
       ];
       const reqOrigin = req.headers.origin;
@@ -898,7 +900,33 @@ export function createRelayServer({
       }
       openDashboardTimestamps.push(now);
 
-      const dashboardUrl = `http://127.0.0.1:${boundPort}/dashboard.html#admin-key=${encodeURIComponent(
+      let body = {};
+      try {
+        body = await readJsonBody(req);
+      } catch {
+        // ignore invalid body on open-dashboard
+      }
+
+      let targetBaseUrl = `http://127.0.0.1:${boundPort}/dashboard.html`;
+      if (body && typeof body.pageUrl === 'string' && body.pageUrl) {
+        try {
+          const normalizedTarget = normalizePageUrl(body.pageUrl);
+          const parsedTarget = new URL(normalizedTarget);
+          if (
+            parsedTarget.origin === reqOrigin &&
+            (parsedTarget.origin.startsWith('http://127.0.0.1:') ||
+              parsedTarget.origin.startsWith('http://localhost:') ||
+              (parsedTarget.origin === 'https://yongjhih.github.io' &&
+                parsedTarget.pathname.startsWith('/ai-proxy/')))
+          ) {
+            targetBaseUrl = normalizedTarget;
+          }
+        } catch {
+          // fallback to local dashboard.html
+        }
+      }
+
+      const dashboardUrl = `${targetBaseUrl}#admin-key=${encodeURIComponent(
         activeStore.getAdminKey()
       )}&mcp-port=${boundPort}`;
       await openBrowser(dashboardUrl);

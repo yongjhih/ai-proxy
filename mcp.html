@@ -61,27 +61,23 @@
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25ZM7.25 8a.749.749 0 0 1-.22.53l-2.25 2.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L5.44 8 3.72 6.28a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l2.25 2.25c.141.14.22.331.22.53Zm1.5 1.5h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1 0-1.5Z"></path></svg>
           <span>MCP Page (6 Tools)</span>
         </a>
-        <a class="nav-link" href="covpages/">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M1.5 1.75V13.5h13.75a.75.75 0 0 1 0 1.5H.75a.75.75 0 0 1-.75-.75V1.75a.75.75 0 0 1 1.5 0Zm14.28 2.53-5.25 5.25a.75.75 0 0 1-1.06 0L7 7.06 4.28 9.78a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l3.25-3.25a.75.75 0 0 1 1.06 0L10 7.94l4.72-4.72a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042Z"></path></svg>
-          <span>Coverage</span>
-        </a>
       </nav>
     </div>
   </header>
 
   <main class="page-shell">
     <section class="prose-measure" style="margin-bottom:1.5rem;">
-      <h1>This Site’s MCP Page (<code>mcp.html</code>)</h1>
+      <h1>This Site’s MCP Page (<code>mcp</code>)</h1>
       <p>
         This page registers six client-side WebMCP tools via <code>navigator.modelContext</code> (<code>about</code>, <code>sites</code>, <code>site_tools</code>, <code>spec</code>, <code>add_site</code>, <code>remove_site</code>). Register it in your local <code>ai-proxy</code> with:
       </p>
-      <pre><code data-replace-base-url="true">npx ai-proxy add https://&lt;host&gt;/&lt;org&gt;/&lt;repo&gt;/mcp --name ai-proxy-docs</code></pre>
+      <pre><code data-replace-base-url="true">npx ai-proxy add https://&lt;host&gt;/&lt;org&gt;/&lt;repo&gt;/mcp --name ai-proxy</code></pre>
     </section>
 
     <div id="self-mcp-catalog" style="margin-bottom:2rem;"></div>
 
-    <section id="self-mcp-admin-section" hidden>
-      <h2>Inline Relay Administration (<code>#admin-key</code> Active)</h2>
+    <section id="self-mcp-admin-section">
+      <h2>Relay Administration Dashboard</h2>
       <div id="self-mcp-admin-container"></div>
     </section>
   </main>
@@ -144,7 +140,9 @@
   <script type="module">
     import { initSelfMcpPage } from './site/self-mcp.mjs';
     import { initAskAiDrawer } from './site/ask-ai.mjs';
+    import { highlightAllCodeBlocks } from './site/syntax.mjs';
 
+    highlightAllCodeBlocks();
     const catalogContainer = document.getElementById('self-mcp-catalog');
     const adminSection = document.getElementById('self-mcp-admin-section');
     const adminContainer = document.getElementById('self-mcp-admin-container');
