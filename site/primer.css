@@ -753,6 +753,40 @@ textarea {
   margin-top: 0.5rem;
 }
 
+.mermaid {
+  background-color: var(--bg-canvas);
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  padding: 1rem;
+  margin: 1rem 0;
+  overflow-x: auto;
+  text-align: center;
+}
+
+.primer-box > .mermaid {
+  border: none;
+  margin: 0;
+  padding: 0.25rem;
+}
+
+.readme-shields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 0.875rem;
+}
+
+.readme-shields a {
+  display: inline-flex;
+  align-items: center;
+}
+
+.readme-shields img {
+  display: block;
+  height: 20px;
+}
+
 @media (max-width: 768px) {
   .doc-layout {
     grid-template-columns: 1fr;

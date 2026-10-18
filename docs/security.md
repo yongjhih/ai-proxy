@@ -15,7 +15,7 @@ Every security rule below is mandatory, enforced in code, and verified by dedica
 ## Threat Matrix Overview
 
 ```mermaid
-flowchart TD
+flowchart LR
   A1["Attack 1: Sibling repo on *.github.io reads localStorage to steal tab key"] -->|Blocked by| R1["Rule 1: Per-Page Key in Fragment -> history.state only"]
   A2["Attack 2: Sibling repo /evil on same origin spoofs allowed /good repo"] -->|Blocked by| R2["Rule 2: URL Prefix Allowlist (path boundary aware)"]
   A3["Attack 3: Malicious web page calls /mcp directly via fetch()"] -->|Blocked by| R3["Rule 3: Reject any /mcp request with an Origin header"]

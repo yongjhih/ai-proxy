@@ -130,7 +130,7 @@ export async function initSelfMcpPage({
         openWorldHint: false
       },
       async execute({ url }) {
-        if (!url || url === `${siteBaseUrl}mcp.html`) {
+        if (!url || url === `${siteBaseUrl}mcp.html` || url === `${siteBaseUrl}mcp`) {
           const selfTools =
             win && win.navigator && win.navigator.modelContext
               ? win.navigator.modelContext.listTools()

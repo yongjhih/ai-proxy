@@ -30,7 +30,9 @@
     "mcp.html"
   ],
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "test:coverage": "mkdir -p coverage && node --test --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=coverage/lcov.info",
+    "covpages": "npm run test:coverage && npx covpages generate --input coverage/lcov.info --output covpages --repo yongjhih/ai-proxy --branch main --title \"ai-proxy Coverage\" && node -e \"import('node:fs').then(fs=>fs.writeFileSync('covpages/index.html',fs.readFileSync('covpages/index.html','utf8').replace(/0 8px 24px/g,'0 4px 12px')))\""
   },
   "engines": {
     "node": ">=20.0.0"

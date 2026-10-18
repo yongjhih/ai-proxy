@@ -1,0 +1,614 @@
+{
+  "commit": {
+    "sha": "2b6415bca900498913dabaff9672e8c039adde3e",
+    "shortSha": "2b6415b",
+    "message": "Merge pull request #8 from yongjhih/fix-primer-design-and-gh-pages",
+    "author": "Andrew Chen",
+    "date": "2026-10-18T07:52:29.000Z",
+    "branch": "main"
+  },
+  "summary": {
+    "lines": {
+      "total": 6507,
+      "covered": 5467,
+      "skipped": 1040,
+      "pct": 84.02
+    },
+    "functions": {
+      "total": 359,
+      "covered": 312,
+      "skipped": 47,
+      "pct": 86.91
+    },
+    "branches": {
+      "total": 1058,
+      "covered": 788,
+      "skipped": 270,
+      "pct": 74.48
+    }
+  },
+  "folderSummaries": {
+    "": {
+      "lines": {
+        "total": 6507,
+        "covered": 5467,
+        "skipped": 1040,
+        "pct": 84.02
+      },
+      "functions": {
+        "total": 359,
+        "covered": 312,
+        "skipped": 47,
+        "pct": 86.91
+      },
+      "branches": {
+        "total": 1058,
+        "covered": 788,
+        "skipped": 270,
+        "pct": 74.48
+      }
+    },
+    "bin": {
+      "lines": {
+        "total": 5,
+        "covered": 5,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 1,
+        "covered": 1,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "site": {
+      "lines": {
+        "total": 406,
+        "covered": 273,
+        "skipped": 133,
+        "pct": 67.24
+      },
+      "functions": {
+        "total": 14,
+        "covered": 12,
+        "skipped": 2,
+        "pct": 85.71
+      },
+      "branches": {
+        "total": 53,
+        "covered": 44,
+        "skipped": 9,
+        "pct": 83.02
+      }
+    },
+    "src": {
+      "lines": {
+        "total": 2507,
+        "covered": 2078,
+        "skipped": 429,
+        "pct": 82.89
+      },
+      "functions": {
+        "total": 108,
+        "covered": 95,
+        "skipped": 13,
+        "pct": 87.96
+      },
+      "branches": {
+        "total": 531,
+        "covered": 377,
+        "skipped": 154,
+        "pct": 71
+      }
+    },
+    "test": {
+      "lines": {
+        "total": 2399,
+        "covered": 2322,
+        "skipped": 77,
+        "pct": 96.79
+      },
+      "functions": {
+        "total": 187,
+        "covered": 167,
+        "skipped": 20,
+        "pct": 89.3
+      },
+      "branches": {
+        "total": 215,
+        "covered": 199,
+        "skipped": 16,
+        "pct": 92.56
+      }
+    },
+    "web": {
+      "lines": {
+        "total": 1190,
+        "covered": 789,
+        "skipped": 401,
+        "pct": 66.3
+      },
+      "functions": {
+        "total": 50,
+        "covered": 38,
+        "skipped": 12,
+        "pct": 76
+      },
+      "branches": {
+        "total": 258,
+        "covered": 167,
+        "skipped": 91,
+        "pct": 64.73
+      }
+    }
+  },
+  "fileSummaries": {
+    "bin/ai-proxy-docker.mjs": {
+      "lines": {
+        "total": 5,
+        "covered": 5,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 1,
+        "covered": 1,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "site/doc-reader.mjs": {
+      "lines": {
+        "total": 290,
+        "covered": 157,
+        "skipped": 133,
+        "pct": 54.14
+      },
+      "functions": {
+        "total": 12,
+        "covered": 10,
+        "skipped": 2,
+        "pct": 83.33
+      },
+      "branches": {
+        "total": 43,
+        "covered": 37,
+        "skipped": 6,
+        "pct": 86.05
+      }
+    },
+    "site/i18n.mjs": {
+      "lines": {
+        "total": 116,
+        "covered": 116,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 2,
+        "covered": 2,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 10,
+        "covered": 7,
+        "skipped": 3,
+        "pct": 70
+      }
+    },
+    "src/cli.mjs": {
+      "lines": {
+        "total": 523,
+        "covered": 432,
+        "skipped": 91,
+        "pct": 82.6
+      },
+      "functions": {
+        "total": 17,
+        "covered": 15,
+        "skipped": 2,
+        "pct": 88.24
+      },
+      "branches": {
+        "total": 99,
+        "covered": 71,
+        "skipped": 28,
+        "pct": 71.72
+      }
+    },
+    "src/docker.mjs": {
+      "lines": {
+        "total": 365,
+        "covered": 312,
+        "skipped": 53,
+        "pct": 85.48
+      },
+      "functions": {
+        "total": 12,
+        "covered": 8,
+        "skipped": 4,
+        "pct": 66.67
+      },
+      "branches": {
+        "total": 69,
+        "covered": 45,
+        "skipped": 24,
+        "pct": 65.22
+      }
+    },
+    "src/relay.mjs": {
+      "lines": {
+        "total": 1221,
+        "covered": 955,
+        "skipped": 266,
+        "pct": 78.21
+      },
+      "functions": {
+        "total": 47,
+        "covered": 41,
+        "skipped": 6,
+        "pct": 87.23
+      },
+      "branches": {
+        "total": 275,
+        "covered": 192,
+        "skipped": 83,
+        "pct": 69.82
+      }
+    },
+    "src/store.mjs": {
+      "lines": {
+        "total": 398,
+        "covered": 379,
+        "skipped": 19,
+        "pct": 95.23
+      },
+      "functions": {
+        "total": 32,
+        "covered": 31,
+        "skipped": 1,
+        "pct": 96.88
+      },
+      "branches": {
+        "total": 88,
+        "covered": 69,
+        "skipped": 19,
+        "pct": 78.41
+      }
+    },
+    "test/cli-v1-admin.test.mjs": {
+      "lines": {
+        "total": 359,
+        "covered": 359,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 23,
+        "covered": 22,
+        "skipped": 1,
+        "pct": 95.65
+      },
+      "branches": {
+        "total": 26,
+        "covered": 26,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "test/devcontainer-docker.test.mjs": {
+      "lines": {
+        "total": 283,
+        "covered": 275,
+        "skipped": 8,
+        "pct": 97.17
+      },
+      "functions": {
+        "total": 15,
+        "covered": 14,
+        "skipped": 1,
+        "pct": 93.33
+      },
+      "branches": {
+        "total": 16,
+        "covered": 15,
+        "skipped": 1,
+        "pct": 93.75
+      }
+    },
+    "test/i18n.test.mjs": {
+      "lines": {
+        "total": 53,
+        "covered": 53,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 1,
+        "covered": 1,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 4,
+        "covered": 4,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "test/relay.test.mjs": {
+      "lines": {
+        "total": 333,
+        "covered": 331,
+        "skipped": 2,
+        "pct": 99.4
+      },
+      "functions": {
+        "total": 25,
+        "covered": 24,
+        "skipped": 1,
+        "pct": 96
+      },
+      "branches": {
+        "total": 27,
+        "covered": 27,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "test/security-baselines.test.mjs": {
+      "lines": {
+        "total": 335,
+        "covered": 331,
+        "skipped": 4,
+        "pct": 98.81
+      },
+      "functions": {
+        "total": 18,
+        "covered": 16,
+        "skipped": 2,
+        "pct": 88.89
+      },
+      "branches": {
+        "total": 19,
+        "covered": 18,
+        "skipped": 1,
+        "pct": 94.74
+      }
+    },
+    "test/site-e2e.test.mjs": {
+      "lines": {
+        "total": 463,
+        "covered": 429,
+        "skipped": 34,
+        "pct": 92.66
+      },
+      "functions": {
+        "total": 38,
+        "covered": 36,
+        "skipped": 2,
+        "pct": 94.74
+      },
+      "branches": {
+        "total": 52,
+        "covered": 43,
+        "skipped": 9,
+        "pct": 82.69
+      }
+    },
+    "test/web-client-ui.test.mjs": {
+      "lines": {
+        "total": 195,
+        "covered": 173,
+        "skipped": 22,
+        "pct": 88.72
+      },
+      "functions": {
+        "total": 17,
+        "covered": 11,
+        "skipped": 6,
+        "pct": 64.71
+      },
+      "branches": {
+        "total": 23,
+        "covered": 20,
+        "skipped": 3,
+        "pct": 86.96
+      }
+    },
+    "test/web-handshake.test.mjs": {
+      "lines": {
+        "total": 108,
+        "covered": 103,
+        "skipped": 5,
+        "pct": 95.37
+      },
+      "functions": {
+        "total": 15,
+        "covered": 12,
+        "skipped": 3,
+        "pct": 80
+      },
+      "branches": {
+        "total": 13,
+        "covered": 13,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "test/web-model-context.test.mjs": {
+      "lines": {
+        "total": 180,
+        "covered": 178,
+        "skipped": 2,
+        "pct": 98.89
+      },
+      "functions": {
+        "total": 27,
+        "covered": 23,
+        "skipped": 4,
+        "pct": 85.19
+      },
+      "branches": {
+        "total": 26,
+        "covered": 24,
+        "skipped": 2,
+        "pct": 92.31
+      }
+    },
+    "test/web-url.test.mjs": {
+      "lines": {
+        "total": 90,
+        "covered": 90,
+        "skipped": 0,
+        "pct": 100
+      },
+      "functions": {
+        "total": 8,
+        "covered": 8,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 9,
+        "covered": 9,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "web/client.mjs": {
+      "lines": {
+        "total": 280,
+        "covered": 196,
+        "skipped": 84,
+        "pct": 70
+      },
+      "functions": {
+        "total": 14,
+        "covered": 9,
+        "skipped": 5,
+        "pct": 64.29
+      },
+      "branches": {
+        "total": 41,
+        "covered": 20,
+        "skipped": 21,
+        "pct": 48.78
+      }
+    },
+    "web/dispatch.mjs": {
+      "lines": {
+        "total": 178,
+        "covered": 135,
+        "skipped": 43,
+        "pct": 75.84
+      },
+      "functions": {
+        "total": 4,
+        "covered": 3,
+        "skipped": 1,
+        "pct": 75
+      },
+      "branches": {
+        "total": 36,
+        "covered": 15,
+        "skipped": 21,
+        "pct": 41.67
+      }
+    },
+    "web/handshake.mjs": {
+      "lines": {
+        "total": 71,
+        "covered": 69,
+        "skipped": 2,
+        "pct": 97.18
+      },
+      "functions": {
+        "total": 1,
+        "covered": 1,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 29,
+        "covered": 24,
+        "skipped": 5,
+        "pct": 82.76
+      }
+    },
+    "web/model-context.mjs": {
+      "lines": {
+        "total": 283,
+        "covered": 223,
+        "skipped": 60,
+        "pct": 78.8
+      },
+      "functions": {
+        "total": 22,
+        "covered": 18,
+        "skipped": 4,
+        "pct": 81.82
+      },
+      "branches": {
+        "total": 79,
+        "covered": 61,
+        "skipped": 18,
+        "pct": 77.22
+      }
+    },
+    "web/ui.mjs": {
+      "lines": {
+        "total": 263,
+        "covered": 67,
+        "skipped": 196,
+        "pct": 25.48
+      },
+      "functions": {
+        "total": 4,
+        "covered": 2,
+        "skipped": 2,
+        "pct": 50
+      },
+      "branches": {
+        "total": 22,
+        "covered": 9,
+        "skipped": 13,
+        "pct": 40.91
+      }
+    },
+    "web/url.mjs": {
+      "lines": {
+        "total": 115,
+        "covered": 99,
+        "skipped": 16,
+        "pct": 86.09
+      },
+      "functions": {
+        "total": 5,
+        "covered": 5,
+        "skipped": 0,
+        "pct": 100
+      },
+      "branches": {
+        "total": 51,
+        "covered": 38,
+        "skipped": 13,
+        "pct": 74.51
+      }
+    }
+  }
+}

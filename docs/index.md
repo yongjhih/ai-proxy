@@ -32,6 +32,6 @@ npx ai-proxy add https://example.github.io/my-docs/mcp.html
 
 ## Core Specifications
 
-1. **[MCP Pages Specification (`spec.md`)](doc.html?d=spec)** — How static sites normalize URLs, receive per-page keys via URL fragments, register WebMCP tools, and manage tab lifecycles.
-2. **[Wire Protocol (`protocol.md`)](doc.html?d=protocol)** — Complete HTTP request, response, status code, and error reference for `/mcp`, `/tab/v1/*`, `/v1/*`, and `/admin/v1/*`.
-3. **[Security Model (`security.md`)](doc.html?d=security)** — Multi-tenant origin threat model (`<user>.github.io`) and the seven mandatory security invariants with the attacks each rule prevents.
+1. **[MCP Pages Specification (`spec.md`)](doc?d=spec)** — How static sites normalize URLs, receive per-page keys via URL fragments, register WebMCP tools, and manage tab lifecycles.
+2. **[Wire Protocol (`protocol.md`)](doc?d=protocol)** — Complete HTTP request, response, status code, and error reference for `/mcp`, `/tab/v1/*`, `/v1/*`, and `/admin/v1/*`.
+3. **[Security Model (`security.md`)](doc?d=security)** — Multi-tenant origin threat model (`<user>.github.io`) and the seven mandatory security invariants with the attacks each rule prevents.

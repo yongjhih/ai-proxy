@@ -211,37 +211,76 @@ test(
         }
       }
 
-      // 1. Verify index.html & zh-TW.html at desktop and mobile widths
-      await navigateAndCheck('index.html', 1280, 900, 'index-desktop.png');
+      // 1. Verify root / & /zh-TW short URLs at desktop and mobile widths
+      await navigateAndCheck('', 1280, 900, 'index-desktop.png');
       const indexQuickstart = await page.evalJs(
         `document.querySelector('[data-replace-base-url="true"]').textContent`
       );
-      assert.ok(indexQuickstart.includes(`${baseUrl}/mcp.html`), 'index.html base URL replaced');
+      assert.ok(indexQuickstart.includes(`${baseUrl}/mcp.html`), 'index base URL replaced');
 
-      // Test theme toggle buttons on index.html
+      // Test theme toggle buttons and dark/light Mermaid re-rendering on root /
       await page.evalJs(`document.querySelector('[data-theme-mode="dark"]').click()`);
+      await new Promise((r) => setTimeout(r, 400));
       assert.equal(await page.evalJs(`document.documentElement.getAttribute('data-theme')`), 'dark');
+      if (screenshotDir) {
+        await page.send('Emulation.setDeviceMetricsOverride', {
+          width: 1280,
+          height: 1450,
+          deviceScaleFactor: 1,
+          mobile: false
+        });
+        const shot = await page.send('Page.captureScreenshot', { format: 'png' });
+        fs.writeFileSync(path.join(screenshotDir, 'index-dark.png'), Buffer.from(shot.data, 'base64'));
+      }
+      const mermaidSvgText = await page.evalJs(`document.querySelector('.mermaid').textContent`);
+      assert.ok(mermaidSvgText.includes('mcp-key'), 'Mermaid diagram preserves mcp-key without # comment truncation');
       await page.evalJs(`document.querySelector('[data-theme-mode="light"]').click()`);
+      await new Promise((r) => setTimeout(r, 250));
       assert.equal(await page.evalJs(`document.documentElement.getAttribute('data-theme')`), 'light');
 
-      await navigateAndCheck('index.html', 390, 844, 'index-mobile.png');
-      await navigateAndCheck('zh-TW.html', 1280, 900, 'zh-TW-desktop.png');
-      await navigateAndCheck('zh-TW.html', 390, 844, 'zh-TW-mobile.png');
+      await navigateAndCheck('', 390, 844, 'index-mobile.png');
+      await navigateAndCheck('zh-TW', 1280, 900, 'zh-TW-desktop.png');
+      await navigateAndCheck('zh-TW', 390, 844, 'zh-TW-mobile.png');
 
-      // 2. Verify doc.html SPA navigation across topics and languages
-      await navigateAndCheck('doc.html?d=index', 1280, 900, 'doc-desktop.png');
+      // 2. Verify /doc?d=... short URL SPA navigation across topics and languages
+      await navigateAndCheck('doc?d=index', 1280, 900, 'doc-desktop.png');
       await page.evalJs(`document.querySelector('a[data-doc="spec"]').click()`);
       await new Promise((r) => setTimeout(r, 250));
+      assert.equal(await page.evalJs(`window.location.pathname`), '/doc');
       assert.equal(await page.evalJs(`window.location.search`), '?d=spec');
       assert.ok((await page.evalJs(`document.getElementById('doc-content').textContent`)).includes('MCP Pages'));
 
+      await page.evalJs(`document.querySelector('a[data-doc="security"]').click()`);
+      await new Promise((r) => setTimeout(r, 350));
+      assert.equal(await page.evalJs(`window.location.pathname`), '/doc');
+      assert.equal(await page.evalJs(`window.location.search`), '?d=security');
+      await page.evalJs(`document.querySelector('[data-theme-mode="dark"]').click()`);
+      await new Promise((r) => setTimeout(r, 400));
+      if (screenshotDir) {
+        await page.send('Emulation.setDeviceMetricsOverride', {
+          width: 1280,
+          height: 1450,
+          deviceScaleFactor: 1,
+          mobile: false
+        });
+        const shot = await page.send('Page.captureScreenshot', { format: 'png' });
+        fs.writeFileSync(path.join(screenshotDir, 'doc-security-dark.png'), Buffer.from(shot.data, 'base64'));
+      }
+
       await page.evalJs(`document.querySelector('a[data-doc="zh-TW/security"]').click()`);
       await new Promise((r) => setTimeout(r, 250));
+      assert.equal(await page.evalJs(`window.location.pathname`), '/doc');
       assert.equal(await page.evalJs(`window.location.search`), '?d=zh-TW%2Fsecurity');
-      await navigateAndCheck('doc.html?d=zh-TW/security', 390, 844, 'doc-mobile.png');
+      await navigateAndCheck('doc?d=zh-TW/security', 390, 844, 'doc-mobile.png');
 
-      // 3. Verify dashboard.html unauthenticated Connect button
-      await navigateAndCheck('dashboard.html', 1280, 900, 'dashboard-unauth-desktop.png');
+      // Verify /covpages/ coverage report page loads cleanly
+      const covRes = await fetch(`${baseUrl}/covpages/`);
+      assert.equal(covRes.status, 200);
+      const badgeRes = await fetch(`${baseUrl}/covpages/badge.svg`);
+      assert.equal(badgeRes.status, 200);
+
+      // 3. Verify /dashboard short URL unauthenticated Connect button
+      await navigateAndCheck('dashboard', 1280, 900, 'dashboard-unauth-desktop.png');
       await page.evalJs(`document.getElementById('btn-connect-dashboard').click()`);
       await new Promise((r) => setTimeout(r, 200));
       assert.equal(openedUrls.length, 1);

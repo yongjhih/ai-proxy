@@ -32,6 +32,6 @@ npx ai-proxy add https://example.github.io/my-docs/mcp.html
 
 ## 核心規範文件
 
-1. **[MCP Pages 規範 (`spec.md`)](doc.html?d=zh-TW/spec)** — 定義網站與轉送的職責：網址正規化、URL fragment 金鑰交接、WebMCP `ModelContext` 工具規格與分頁生命週期。
-2. **[通訊協定 (`protocol.md`)](doc.html?d=zh-TW/protocol)** — 詳列 `/mcp`、`/tab/v1/*`、`/v1/*` 與 `/admin/v1/*` 的每一個 HTTP 請求、回應格式與錯誤碼。
-3. **[安全模型 (`security.md`)](doc.html?d=zh-TW/security)** — 針對 `<user>.github.io` 共用 origin 的威脅模型，以及七條安全底線與各自攔截的攻擊手法。
+1. **[MCP Pages 規範 (`spec.md`)](doc?d=zh-TW/spec)** — 定義網站與轉送的職責：網址正規化、URL fragment 金鑰交接、WebMCP `ModelContext` 工具規格與分頁生命週期。
+2. **[通訊協定 (`protocol.md`)](doc?d=zh-TW/protocol)** — 詳列 `/mcp`、`/tab/v1/*`、`/v1/*` 與 `/admin/v1/*` 的每一個 HTTP 請求、回應格式與錯誤碼。
+3. **[安全模型 (`security.md`)](doc?d=zh-TW/security)** — 針對 `<user>.github.io` 共用 origin 的威脅模型，以及七條安全底線與各自攔截的攻擊手法。
