@@ -492,11 +492,31 @@ test(
       mcpTab.close();
       page.close();
     } finally {
-      chrome.proc.kill('SIGTERM');
-      await new Promise((resolve) => chrome.proc.once('exit', resolve));
+      if (chrome?.proc) {
+        if (chrome.proc.exitCode === null) {
+          try {
+            chrome.proc.kill('SIGTERM');
+          } catch {}
+          const killTimer = setTimeout(() => {
+            try {
+              chrome.proc.kill('SIGKILL');
+            } catch {}
+          }, 1500);
+          await new Promise((resolve) => {
+            if (chrome.proc.exitCode !== null) return resolve();
+            chrome.proc.once('exit', resolve);
+          });
+          clearTimeout(killTimer);
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200));
       await relay.stop();
-      fs.rmSync(tmpHome, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
-      fs.rmSync(chromeDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      try {
+        fs.rmSync(tmpHome, { recursive: true, force: true, maxRetries: 10, retryDelay: 150 });
+      } catch {}
+      try {
+        fs.rmSync(chromeDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 150 });
+      } catch {}
     }
   }
 );

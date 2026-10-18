@@ -27,11 +27,89 @@ export async function mountAdminDashboard({
   let mcpPort = explicitPort || (hs.mcpPort !== 8788 ? hs.mcpPort : urlPort || 8788);
   let baseUrl = `http://127.0.0.1:${mcpPort}`;
 
+  let broadcastChan = null;
+  try {
+    if (win && typeof win.BroadcastChannel === 'function') {
+      broadcastChan = new win.BroadcastChannel('ai_proxy_admin_channel');
+      broadcastChan.onmessage = (ev) => {
+        if (ev && ev.data && ev.data.adminKey) {
+          adminKey = ev.data.adminKey;
+          if (ev.data.mcpPort) {
+            mcpPort = ev.data.mcpPort;
+            baseUrl = `http://127.0.0.1:${mcpPort}`;
+          }
+          if (win && win.history && typeof win.history.replaceState === 'function') {
+            const currentState =
+              win.history.state && typeof win.history.state === 'object' ? { ...win.history.state } : {};
+            currentState.__aiProxy = {
+              ...(currentState.__aiProxy || {}),
+              adminKey,
+              mcpPort
+            };
+            win.history.replaceState(currentState, '', win.location.pathname + win.location.search);
+          }
+          refreshDashboard();
+        }
+      };
+    }
+  } catch {
+    // broadcast channel optional
+  }
+
+  function broadcastAdminKey(key, port) {
+    if (broadcastChan) {
+      try {
+        broadcastChan.postMessage({ adminKey: key, mcpPort: port });
+      } catch {}
+    }
+  }
+
+  if (adminKey) {
+    broadcastAdminKey(adminKey, mcpPort);
+    if (win && win.opener && typeof win.opener.postMessage === 'function') {
+      try {
+        win.opener.postMessage({ type: 'ai_proxy_admin_key', adminKey, mcpPort }, '*');
+      } catch {}
+    }
+  }
+
   if (win && typeof win.addEventListener === 'function') {
+    win.addEventListener('message', (ev) => {
+      if (ev && ev.data && ev.data.type === 'ai_proxy_admin_key' && ev.data.adminKey) {
+        adminKey = ev.data.adminKey;
+        if (ev.data.mcpPort) {
+          mcpPort = ev.data.mcpPort;
+          baseUrl = `http://127.0.0.1:${mcpPort}`;
+        }
+        if (win && win.history && typeof win.history.replaceState === 'function') {
+          const currentState =
+            win.history.state && typeof win.history.state === 'object' ? { ...win.history.state } : {};
+          currentState.__aiProxy = {
+            ...(currentState.__aiProxy || {}),
+            adminKey,
+            mcpPort
+          };
+          win.history.replaceState(currentState, '', win.location.pathname + win.location.search);
+        }
+        refreshDashboard();
+      }
+    });
+
     win.addEventListener('hashchange', () => {
       if (win.location && win.location.hash) {
         hs = extractHandshake(win);
-        if (hs.adminKey) adminKey = hs.adminKey;
+        if (hs.adminKey) {
+          adminKey = hs.adminKey;
+          broadcastAdminKey(adminKey, hs.mcpPort || mcpPort);
+          if (win && win.opener && typeof win.opener.postMessage === 'function') {
+            try {
+              win.opener.postMessage(
+                { type: 'ai_proxy_admin_key', adminKey, mcpPort: hs.mcpPort || mcpPort },
+                '*'
+              );
+            } catch {}
+          }
+        }
         if (hs.mcpPort) {
           mcpPort = hs.mcpPort;
           baseUrl = `http://127.0.0.1:${mcpPort}`;
@@ -73,23 +151,23 @@ export async function mountAdminDashboard({
       <div class="primer-box" id="dashboard-connect-box">
         <div class="primer-box-header">
           <h2>Connect to Local ai-proxy</h2>
-          <span class="badge ${reachable ? 'badge-warning' : 'badge-neutral'}" id="relay-probe-badge">
+          <span class="badge ${reachable ? 'badge-success' : 'badge-neutral'}" id="relay-probe-badge">
             ${reachable ? `Relay detected on 127.0.0.1:${mcpPort}` : `No relay detected on 127.0.0.1:${mcpPort}`}
           </span>
         </div>
         <div class="primer-box-row">
           <p>
-            This tab does not hold an admin key in <code>history.state</code>. Click <strong>Connect</strong> to ask your local
-            <code>ai-proxy</code> to open an authenticated dashboard tab, or paste your <code>admin-key</code> below to manage MCP sites directly in this tab:
+            Connect to your local <code>ai-proxy</code> relay to manage registered MCP sites, URL prefix allowlists, and key rotation directly in this tab.
           </p>
-          <div class="form-row">
+          <div class="form-row" style="gap:0.75rem;align-items:center;">
             <button type="button" class="btn btn-primary" id="btn-connect-dashboard">
               Connect (接上本機 ai-proxy)
             </button>
+            <span style="color:var(--fg-muted);font-size:0.875rem;">或直接貼上管理金鑰：</span>
           </div>
           <form id="form-manual-admin-key" class="form-row" style="margin-top:0.75rem;">
-            <input type="password" name="adminKey" placeholder="adm_... (optional: paste admin-key to unlock this tab)" style="flex:1;min-width:14rem;" />
-            <button type="submit" class="btn btn-sm" id="btn-unlock-dashboard">Unlock This Tab</button>
+            <input type="password" name="adminKey" placeholder="adm_... (paste admin-key to unlock dashboard in-place)" style="flex:1;min-width:16rem;" required />
+            <button type="submit" class="btn" id="btn-unlock-dashboard">Unlock Dashboard</button>
           </form>
           <div id="connect-feedback" style="margin-top:0.75rem;"></div>
         </div>
@@ -99,11 +177,29 @@ export async function mountAdminDashboard({
     const connectBtn = container.querySelector('#btn-connect-dashboard');
     const manualForm = container.querySelector('#form-manual-admin-key');
     const feedbackEl = container.querySelector('#connect-feedback');
+
+    function applyAdminKeyInPlace(newKey) {
+      if (!newKey) return;
+      adminKey = newKey;
+      broadcastAdminKey(newKey, mcpPort);
+      if (win && win.history && typeof win.history.replaceState === 'function') {
+        const currentState =
+          win.history.state && typeof win.history.state === 'object' ? { ...win.history.state } : {};
+        currentState.__aiProxy = {
+          ...(currentState.__aiProxy || {}),
+          adminKey: newKey,
+          mcpPort
+        };
+        win.history.replaceState(currentState, '', win.location.pathname + win.location.search);
+      }
+      refreshDashboard();
+    }
+
     if (connectBtn) {
       connectBtn.addEventListener('click', async () => {
         connectBtn.disabled = true;
         if (feedbackEl) {
-          feedbackEl.innerHTML = '<span class="mono">Requesting /admin/v1/open-dashboard...</span>';
+          feedbackEl.innerHTML = '<span class="mono">Connecting to local ai-proxy relay...</span>';
         }
         try {
           const pageUrl = win && win.location ? win.location.href : undefined;
@@ -112,12 +208,18 @@ export async function mountAdminDashboard({
             body: JSON.stringify({ pageUrl })
           });
           if (feedbackEl) {
-            feedbackEl.innerHTML =
-              '<div class="flash-banner">Authenticated dashboard tab opened by local <code>ai-proxy</code>.</div>';
+            feedbackEl.innerHTML = `
+              <div class="flash-banner flash-warning" style="margin-bottom:0.5rem;">
+                <strong>已請求本機 ai-proxy 授權！</strong> 若瀏覽器已自動在新分頁開啟帶金鑰的儀表板，本頁將自動透過跨分頁頻道同步解鎖。
+                <div style="margin-top:0.5rem;">
+                  您也可以執行 <code class="mono">cat ~/.config/ai-proxy/config.json | grep adminKey</code> 並貼至上方輸入框立即解鎖原地展示。
+                </div>
+              </div>
+            `;
           }
         } catch (err) {
           if (feedbackEl) {
-            feedbackEl.innerHTML = `<div class="flash-banner flash-danger">Failed to open dashboard: ${escapeHtml(
+            feedbackEl.innerHTML = `<div class="flash-banner flash-danger">Failed to connect to local relay: ${escapeHtml(
               err.message
             )}</div>`;
           }
@@ -126,24 +228,14 @@ export async function mountAdminDashboard({
         }
       });
     }
+
     if (manualForm) {
       manualForm.addEventListener('submit', async (ev) => {
         ev.preventDefault();
         const fd = new FormData(manualForm);
         const enteredKey = String(fd.get('adminKey') || '').trim();
         if (!enteredKey) return;
-        adminKey = enteredKey;
-        if (win && win.history && typeof win.history.replaceState === 'function') {
-          const currentState =
-            win.history.state && typeof win.history.state === 'object' ? { ...win.history.state } : {};
-          currentState.__aiProxy = {
-            ...(currentState.__aiProxy || {}),
-            adminKey: enteredKey,
-            mcpPort
-          };
-          win.history.replaceState(currentState, '', win.location.pathname + win.location.search);
-        }
-        await refreshDashboard();
+        applyAdminKeyInPlace(enteredKey);
       });
     }
   }

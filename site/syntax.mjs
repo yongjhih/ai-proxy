@@ -1,6 +1,6 @@
 /**
- * Lightweight, zero-dependency Prism/Primer-style syntax highlighter for shell, bash, json, and js.
- * Works seamlessly in both browser and static rendering without external dependencies.
+ * Robust token-based syntax highlighter for shell/bash and json.
+ * Uses lexical tokenization instead of cascading regular expressions to eliminate partial-word replacements.
  */
 
 function escapeHtml(str) {
@@ -10,6 +10,39 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
 }
+
+const COMMANDS = new Set([
+  'ai-proxy',
+  'ai-proxy-docker',
+  'docker-wrapper',
+  'claude',
+  'npx',
+  'node',
+  'docker',
+  'git',
+  'npm'
+]);
+
+const SUBCOMMANDS = new Set([
+  'serve',
+  'add',
+  'remove',
+  'allow',
+  'allow-origin',
+  'deny',
+  'sites',
+  'doctor',
+  'open',
+  'keys',
+  'rotate',
+  'vendor',
+  'install',
+  'devcontainer',
+  'init',
+  'up',
+  'exec',
+  'run'
+]);
 
 export function highlightCode(code, lang = 'bash') {
   const normalizedLang = (lang || 'bash').toLowerCase().replace(/^lang-/, '');
@@ -26,44 +59,56 @@ export function highlightCode(code, lang = 'bash') {
 }
 
 function highlightShellLine(line) {
-  // If whole line or trailing part has comment
-  const commentIndex = line.indexOf('#');
-  if (commentIndex === 0) {
+  // If whole line is a comment
+  if (line.trim().startsWith('#')) {
     return `<span class="syn-comment">${escapeHtml(line)}</span>`;
   }
 
-  let codePart = line;
-  let commentPart = '';
-  if (commentIndex > 0 && /\s/.test(line[commentIndex - 1])) {
-    codePart = line.slice(0, commentIndex);
-    commentPart = `<span class="syn-comment">${escapeHtml(line.slice(commentIndex))}</span>`;
+  // Tokenize line by splitting whitespace and non-whitespace runs
+  const tokenRegex = /(\s+|#[^\n]*|https?:\/\/[^\s]+|--[a-zA-Z0-9_-]+|-[a-zA-Z0-9]|[a-zA-Z0-9_.-]+|[^\s\w])/g;
+  let match;
+  let html = '';
+  let commandSeen = false;
+
+  while ((match = tokenRegex.exec(line)) !== null) {
+    const token = match[0];
+
+    if (/^\s+$/.test(token)) {
+      html += token;
+      continue;
+    }
+
+    if (token.startsWith('#')) {
+      html += `<span class="syn-comment">${escapeHtml(token)}</span>`;
+      continue;
+    }
+
+    if (token.startsWith('http://') || token.startsWith('https://')) {
+      html += `<span class="syn-url">${escapeHtml(token)}</span>`;
+      continue;
+    }
+
+    if (token.startsWith('-')) {
+      html += `<span class="syn-flag">${escapeHtml(token)}</span>`;
+      continue;
+    }
+
+    if (COMMANDS.has(token)) {
+      html += `<span class="syn-cmd">${escapeHtml(token)}</span>`;
+      commandSeen = true;
+      continue;
+    }
+
+    if (SUBCOMMANDS.has(token)) {
+      html += `<span class="syn-subcmd">${escapeHtml(token)}</span>`;
+      continue;
+    }
+
+    // Default plain text
+    html += escapeHtml(token);
   }
 
-  // Tokenize codePart
-  let out = escapeHtml(codePart);
-
-  // Highlighting flags like --name, --port, -p, etc.
-  out = out.replace(/(--[a-zA-Z0-9_-]+|-[a-zA-Z0-9])/g, '<span class="syn-flag">$1</span>');
-
-  // Command verbs: npx, node, ai-proxy, ai-proxy-docker, docker, claude, git, npm
-  out = out.replace(
-    /\b(npx|node|ai-proxy-docker|ai-proxy|docker-wrapper|docker|claude|git|npm)\b/g,
-    '<span class="syn-cmd">$1</span>'
-  );
-
-  // Subcommands: serve, add, remove, allow, allow-origin, deny, sites, doctor, open, keys, rotate, vendor, install, devcontainer, run
-  out = out.replace(
-    /\b(serve|add|remove|allow|allow-origin|deny|sites|doctor|open|keys|rotate|vendor|install|devcontainer|init|up|exec|run)\b/g,
-    '<span class="syn-subcmd">$1</span>'
-  );
-
-  // URLs
-  out = out.replace(
-    /(https?:\/\/[^\s"'<>]+)/g,
-    '<span class="syn-url">$1</span>'
-  );
-
-  return out + commentPart;
+  return html;
 }
 
 function highlightJsonLine(line) {
