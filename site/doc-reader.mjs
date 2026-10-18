@@ -216,6 +216,10 @@ export async function initDocReader({ win = globalThis.window, importMetaUrl = i
   }
 
   async function renderMermaidDiagrams() {
+    if (typeof win.renderAiProxyMermaid === 'function') {
+      await win.renderAiProxyMermaid();
+      return;
+    }
     if (win.mermaid && typeof win.mermaid.run === 'function') {
       try {
         await win.mermaid.run({ querySelector: '.mermaid' });
@@ -240,7 +244,7 @@ export async function initDocReader({ win = globalThis.window, importMetaUrl = i
   async function loadDoc(docId, { pushHistory = false } = {}) {
     const cleanId = VALID_DOCS.has(docId) ? docId : 'index';
     if (pushHistory) {
-      const nextUrl = `doc.html?d=${encodeURIComponent(cleanId)}`;
+      const nextUrl = `doc?d=${encodeURIComponent(cleanId)}`;
       win.history.pushState({ ...(win.history.state || {}), docId: cleanId }, '', nextUrl);
     }
     updateSidebarActive(cleanId);
@@ -263,7 +267,7 @@ export async function initDocReader({ win = globalThis.window, importMetaUrl = i
   }
 
   function interceptInternalDocLinks() {
-    for (const link of doc.querySelectorAll('a[href^="doc.html?d="]')) {
+    for (const link of doc.querySelectorAll('a[href^="doc?d="], a[href^="doc.html?d="]')) {
       if (link.dataset.spaBound === 'true') continue;
       link.dataset.spaBound = 'true';
       link.addEventListener('click', (ev) => {

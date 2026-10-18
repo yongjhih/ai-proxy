@@ -16,8 +16,8 @@ sequenceDiagram
   Note over Relay: Verify allowlist prefix & Origin absence
   alt No active tab connected
     Relay->>Relay: Wait reconnect grace period (e.g. 1500ms)
-    Relay->>Tab: Open URL#mcp-key=<key>&mcp-port=8788
-    Tab->>Tab: Move mcp-key & mcp-port to history.state, strip #fragment
+    Relay->>Tab: Open URL with fragment mcp-key=<key>&mcp-port=8788
+    Tab->>Tab: Move mcp-key & mcp-port to history.state, strip URL fragment
     Tab->>Relay: POST /tab/v1/hello (Bearer <key>)
   end
   Tab->>Relay: GET /tab/v1/poll?sessionId=<sid>

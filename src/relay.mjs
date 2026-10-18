@@ -1073,10 +1073,22 @@ export function createRelayServer({
     }
 
     const safeRel = path.normalize(relPath).replace(/^(\.\.(\/|\\|$))+/, '');
-    const fullPath = path.resolve(rootDir, `.${safeRel.startsWith('/') ? safeRel : `/${safeRel}`}`);
+    let fullPath = path.resolve(rootDir, `.${safeRel.startsWith('/') ? safeRel : `/${safeRel}`}`);
     if (!fullPath.startsWith(path.resolve(rootDir))) {
       sendJson(req, res, 403, { error: 'Forbidden path' });
       return;
+    }
+
+    if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
+      const indexCandidate = path.join(fullPath, 'index.html');
+      if (fs.existsSync(indexCandidate) && !fs.statSync(indexCandidate).isDirectory()) {
+        fullPath = indexCandidate;
+      }
+    } else if (!fs.existsSync(fullPath) && !path.extname(fullPath)) {
+      const htmlCandidate = `${fullPath}.html`;
+      if (fs.existsSync(htmlCandidate) && !fs.statSync(htmlCandidate).isDirectory()) {
+        fullPath = htmlCandidate;
+      }
     }
 
     if (!fs.existsSync(fullPath) || fs.statSync(fullPath).isDirectory()) {
@@ -1117,7 +1129,11 @@ export function createRelayServer({
       return;
     }
 
-    if (pathname === '/mcp' || pathname.startsWith('/mcp/')) {
+    if (
+      pathname.startsWith('/mcp/') ||
+      (pathname === '/mcp' &&
+        (req.method !== 'GET' && req.method !== 'HEAD' || searchParams.has('url')))
+    ) {
       await handleMcpRoute(req, res);
       return;
     }

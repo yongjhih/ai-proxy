@@ -15,7 +15,7 @@
 ## 威脅與防禦對照圖
 
 ```mermaid
-flowchart TD
+flowchart LR
   A1["攻擊 1：同為 *.github.io 的隔壁專案讀取 localStorage 偷走分頁金鑰"] -->|攔截規則| R1["底線 1：每頁獨立金鑰透過 URL fragment 交接並移入 history.state"]
   A2["攻擊 2：同 origin 的隔壁路徑 /evil 冒充已允許的 /good 網站"] -->|攔截規則| R2["底線 2：允許清單比對網址前綴（含路徑邊界），不比對 origin"]
   A3["攻擊 3：惡意網頁直接用 fetch() 呼叫 /mcp 當成 MCP 客戶端"] -->|攔截規則| R3["底線 3：/mcp 拒絕所有帶有 Origin 標頭的請求"]

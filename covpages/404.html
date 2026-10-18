@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Covpages</title>
+  <script>
+    (function() {
+      var l = window.location;
+      var path = l.pathname;
+      var segments = path.split('/').filter(Boolean);
+      var basePath = '/';
+      var route = '';
+      if (segments.length > 0 && (segments[0] === 'covpages' || l.hostname.endsWith('github.io'))) {
+        basePath = '/' + segments[0] + '/';
+        route = segments.slice(1).join('/');
+      } else {
+        route = segments.join('/');
+      }
+
+      if (route.startsWith('covpages/')) {
+        basePath += 'covpages/';
+        route = route.slice('covpages/'.length);
+      } else if (route.startsWith('tree/') || route.startsWith('blob/') || route.startsWith('commits/') || route.startsWith('trends')) {
+        basePath += 'covpages/';
+      }
+
+      var target = basePath + '?/' + encodeURI(route) + (l.search ? '&' + l.search.slice(1) : '') + l.hash;
+      l.replace(target);
+    })();
+  </script>
+</head>
+<body>
+  <p>Redirecting to Covpages...</p>
+</body>
+</html>

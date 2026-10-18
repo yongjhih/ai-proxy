@@ -16,8 +16,8 @@ sequenceDiagram
   Note over Relay: 檢查允許清單前綴與無 Origin 標頭
   alt 尚無連線中的分頁
     Relay->>Relay: 等待重連寬限期 (預設 1500ms)
-    Relay->>Tab: 打開 URL#mcp-key=<key>&mcp-port=8788
-    Tab->>Tab: 將 mcp-key 與 mcp-port 移入 history.state 並清除 #fragment
+    Relay->>Tab: 打開網址並透過 fragment 帶入 mcp-key=<key>&mcp-port=8788
+    Tab->>Tab: 將 mcp-key 與 mcp-port 移入 history.state 並清除網址 fragment
     Tab->>Relay: POST /tab/v1/hello (Bearer <key>)
   end
   Tab->>Relay: GET /tab/v1/poll?sessionId=<sid>

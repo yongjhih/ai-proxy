@@ -1,6 +1,14 @@
 # ai-proxy · MCP Pages 開放規範與本機參考轉送
 
-[English](./README.md) | [繁體中文](./README.zh-TW.md)
+[![Coverage](https://yongjhih.github.io/ai-proxy/covpages/badge.svg)](https://yongjhih.github.io/ai-proxy/covpages/)
+[![src Coverage](https://yongjhih.github.io/ai-proxy/covpages/badges/folder-src.svg)](https://yongjhih.github.io/ai-proxy/covpages/#folder=src)
+[![web Coverage](https://yongjhih.github.io/ai-proxy/covpages/badges/folder-web.svg)](https://yongjhih.github.io/ai-proxy/covpages/#folder=web)
+[![Specification](https://img.shields.io/badge/docs-specification-blue.svg)](https://yongjhih.github.io/ai-proxy/doc?d=zh-TW/spec)
+[![Security](https://img.shields.io/badge/security-7%20baselines-success.svg)](https://yongjhih.github.io/ai-proxy/doc?d=zh-TW/security)
+[![Devcontainer](https://img.shields.io/badge/devcontainer-ready-blue.svg)](.devcontainer/devcontainer.json)
+[![Docker](https://img.shields.io/badge/docker-wrapper-informational.svg)](bin/ai-proxy-docker.mjs)
+
+[English](./README.md) | [繁體中文](./README.zh-TW.md) · 🌐 **專案首頁**：[https://yongjhih.github.io/ai-proxy/zh-TW](https://yongjhih.github.io/ai-proxy/zh-TW) · 📊 **測試覆蓋率報告**：[https://yongjhih.github.io/ai-proxy/covpages/](https://yongjhih.github.io/ai-proxy/covpages/)
 
 **MCP Pages** 是一份開放規範，讓任何純靜態網站（例如 GitHub Pages）不需後端伺服器，就能透過瀏覽器分頁內的 [WebMCP](https://webmachinelearning.github.io/webmcp/) 將工具提供給讀者的本機 AI 開發工具。
 

@@ -1,0 +1,7 @@
+# Covpages Git Packfile Optimization
+# Forces text mode and LF line endings to maximize delta compression across commits
+*.info text eol=lf delta
+*.lcov text eol=lf delta
+*.json text eol=lf delta
+*.js text eol=lf delta
+*.html text eol=lf delta
