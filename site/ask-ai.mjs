@@ -2,10 +2,13 @@
  * "Ask AI" slide-over sidebar component powered by local /v1/chat/completions.
  * Supports interactive CTA buttons (add/remove MCP, allow/deny origin, connect),
  * chapter/section navigation jump links (#quickstart, #details-allow-prefix, etc.),
- * and automatic dashboard element highlighting & expansion.
+ * automatic dashboard element highlighting & expansion, and session history persistence.
  */
 
 import { extractHandshake } from '../web/handshake.mjs';
+
+const STORAGE_KEY_HISTORY = 'ai_proxy_ask_ai_history';
+const STORAGE_KEY_OPEN = 'ai_proxy_ask_ai_open';
 
 function escapeHtml(str) {
   return String(str)
@@ -13,6 +16,13 @@ function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function sanitizeForStorage(str) {
+  return String(str || '')
+    .replace(/#admin-key=[^&]+/g, '#admin-key=[redacted]')
+    .replace(/#mcp-key=[^&]+/g, '#mcp-key=[redacted]')
+    .replace(/Bearer\s+[a-zA-Z0-9_-]+/g, 'Bearer [redacted]');
 }
 
 export function formatAssistantMarkdown(markdown) {
@@ -129,15 +139,68 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
 
   if (!drawer || !form || !input || !messagesEl) return null;
 
+  function loadStoredHistory() {
+    if (!win || !win.sessionStorage) return [];
+    try {
+      const raw = win.sessionStorage.getItem(STORAGE_KEY_HISTORY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function saveStoredHistory(historyList) {
+    if (!win || !win.sessionStorage) return;
+    try {
+      const trimmed = historyList.slice(-50);
+      win.sessionStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(trimmed));
+    } catch {}
+  }
+
+  const messageHistory = loadStoredHistory();
+
+  // If there is existing conversation history, render it
+  if (messageHistory.length > 0) {
+    messagesEl.innerHTML = '';
+    for (const item of messageHistory) {
+      const div = doc.createElement('div');
+      div.className = `ask-ai-msg ${item.role === 'user' ? 'ask-ai-msg-user' : 'ask-ai-msg-assistant'}`;
+      if (item.role === 'user') {
+        div.textContent = item.content;
+      } else {
+        div.innerHTML = formatAssistantMarkdown(item.content);
+      }
+      messagesEl.appendChild(div);
+    }
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
   function setOpen(open) {
     drawer.setAttribute('data-open', open ? 'true' : 'false');
     drawer.setAttribute('aria-hidden', open ? 'false' : 'true');
     if (triggerBtn) {
       triggerBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
+    if (win && win.sessionStorage) {
+      try {
+        win.sessionStorage.setItem(STORAGE_KEY_OPEN, open ? 'true' : 'false');
+      } catch {}
+    }
     if (open) {
       input.focus();
     }
+  }
+
+  // Restore drawer open state if it was open prior to navigating
+  if (win && win.sessionStorage) {
+    try {
+      const savedOpen = win.sessionStorage.getItem(STORAGE_KEY_OPEN);
+      if (savedOpen === 'true') {
+        setOpen(true);
+      }
+    } catch {}
   }
 
   if (triggerBtn) {
@@ -151,7 +214,36 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
     closeBtn.addEventListener('click', () => setOpen(false));
   }
 
-  function appendMessage(role, textOrHtml, isHtml = false) {
+  // Inject Clear History button next to Close button if not present
+  let clearBtn = doc.getElementById('ask-ai-clear');
+  if (!clearBtn && closeBtn && closeBtn.parentNode) {
+    clearBtn = doc.createElement('button');
+    clearBtn.type = 'button';
+    clearBtn.className = 'btn btn-sm';
+    clearBtn.id = 'ask-ai-clear';
+    clearBtn.style.marginRight = '0.375rem';
+    clearBtn.textContent = lang === 'zh-TW' ? '清除紀錄' : 'Clear';
+    closeBtn.parentNode.insertBefore(clearBtn, closeBtn);
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      messageHistory.length = 0;
+      if (win && win.sessionStorage) {
+        try {
+          win.sessionStorage.removeItem(STORAGE_KEY_HISTORY);
+        } catch {}
+      }
+      messagesEl.innerHTML = '';
+      appendAssistantFormatted(
+        lang === 'zh-TW'
+          ? '對話紀錄已清除。您可以隨時詢問我任何關於 MCP Pages 或 ai-proxy 的問題！\n\n- [🚀 前往快速上手指南](#quickstart)\n- [📋 查看 MCP sites 列表](#admin-dashboard-authenticated)\n- [🔒 查看安全性規範](doc.html?d=security)'
+          : 'Chat history cleared. Feel free to ask me anything about MCP Pages or ai-proxy!\n\n- [🚀 Quickstart](#quickstart)\n- [📋 View MCP sites](#admin-dashboard-authenticated)\n- [🔒 Security baseline](doc.html?d=security)'
+      );
+    });
+  }
+
+  function appendMessage(role, textOrHtml, isHtml = false, rawMarkdown = null, persist = true) {
     const div = doc.createElement('div');
     div.className = `ask-ai-msg ${role === 'user' ? 'ask-ai-msg-user' : 'ask-ai-msg-assistant'}`;
     if (isHtml) {
@@ -161,12 +253,19 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
     }
     messagesEl.appendChild(div);
     messagesEl.scrollTop = messagesEl.scrollHeight;
+
+    if (persist) {
+      const content = rawMarkdown || textOrHtml;
+      messageHistory.push({ role, content: sanitizeForStorage(content) });
+      saveStoredHistory(messageHistory);
+    }
+
     return div;
   }
 
-  function appendAssistantFormatted(markdown) {
+  function appendAssistantFormatted(markdown, persist = true) {
     const html = formatAssistantMarkdown(markdown);
-    return appendMessage('assistant', html, true);
+    return appendMessage('assistant', html, true, markdown, persist);
   }
 
   function focusAndHighlight(selector) {
@@ -199,6 +298,53 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
     }
   }
 
+  function handleJump(targetHash) {
+    if (!targetHash || !targetHash.startsWith('#')) return;
+
+    // Check if element exists on current page
+    const found = focusAndHighlight(targetHash);
+    if (!found) {
+      // Element is on another page! Resolve cross-page destination
+      let targetPage = '';
+      if (
+        targetHash === '#form-add-site' ||
+        targetHash === '#admin-dashboard-authenticated' ||
+        targetHash === '#details-allow-prefix' ||
+        targetHash === '#details-allowed-origins' ||
+        targetHash === '#details-key-mgmt' ||
+        targetHash.startsWith('#site-row-')
+      ) {
+        targetPage = 'dashboard.html';
+      } else if (
+        targetHash === '#quickstart' ||
+        targetHash === '#how-it-works' ||
+        targetHash === '#architecture' ||
+        targetHash === '#security' ||
+        targetHash === '#faq' ||
+        targetHash === '#examples'
+      ) {
+        targetPage = lang === 'zh-TW' ? 'zh-TW.html' : 'index.html';
+      }
+
+      if (targetPage) {
+        // Keep drawer open on destination page
+        if (win && win.sessionStorage) {
+          try {
+            win.sessionStorage.setItem(STORAGE_KEY_OPEN, 'true');
+          } catch {}
+        }
+        win.location.href = `${targetPage}${targetHash}`;
+      }
+    }
+  }
+
+  // If page loaded with hash, highlight target section
+  if (win && win.location && win.location.hash) {
+    setTimeout(() => {
+      focusAndHighlight(win.location.hash);
+    }, 250);
+  }
+
   function triggerDashboardRefresh() {
     if (win && typeof win.__aiProxyRefreshDashboard === 'function') {
       try {
@@ -225,6 +371,11 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
 
     if (actionName === 'connect') {
       const redirectUrl = win.location.href;
+      if (win && win.sessionStorage) {
+        try {
+          win.sessionStorage.setItem(STORAGE_KEY_OPEN, 'true');
+        } catch {}
+      }
       win.location.href = `http://127.0.0.1:${port}/admin/v1/open-dashboard?redirect=${encodeURIComponent(
         redirectUrl
       )}`;
@@ -234,7 +385,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
     if (actionName === 'focus') {
       const targetSelector = params.get('target');
       if (targetSelector) {
-        focusAndHighlight(targetSelector);
+        handleJump(targetSelector);
       }
       return;
     }
@@ -368,7 +519,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
       ev.preventDefault();
       const targetHash = jumpBtn.getAttribute('data-jump');
       if (targetHash) {
-        focusAndHighlight(targetHash);
+        handleJump(targetHash);
       }
       return;
     }
@@ -376,9 +527,18 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
     const anchor = ev.target.closest('a');
     if (anchor) {
       const href = anchor.getAttribute('href');
-      if (href && href.startsWith('#')) {
-        ev.preventDefault();
-        focusAndHighlight(href);
+      if (href) {
+        if (href.startsWith('#')) {
+          ev.preventDefault();
+          handleJump(href);
+        } else if (!href.startsWith('http') && !href.startsWith('mailto:')) {
+          // Internal relative navigation: preserve open state across pages
+          if (win && win.sessionStorage) {
+            try {
+              win.sessionStorage.setItem(STORAGE_KEY_OPEN, 'true');
+            } catch {}
+          }
+        }
       }
     }
   });
@@ -390,20 +550,20 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
     input.value = '';
 
     appendMessage('user', prompt);
-    const pendingEl = appendMessage('assistant', '…');
+    const pendingEl = appendMessage('assistant', '…', false, null, false);
 
     // Auto-detect jump/navigation requests and trigger page navigation immediately
     if (/(?:跳轉|前往|打開|跳到|查看|jump to|go to|open)/i.test(prompt)) {
       if (/(?:quickstart|快速上手)/i.test(prompt)) {
-        focusAndHighlight('#quickstart');
+        handleJump('#quickstart');
       } else if (/(?:allowlist|白名單|prefix)/i.test(prompt)) {
-        focusAndHighlight('#details-allow-prefix');
+        handleJump('#details-allow-prefix');
       } else if (/(?:origin|來源)/i.test(prompt)) {
-        focusAndHighlight('#details-allowed-origins');
+        handleJump('#details-allowed-origins');
       } else if (/(?:sites?|mcp|站點)/i.test(prompt)) {
-        focusAndHighlight('#form-add-site');
+        handleJump('#form-add-site');
       } else if (/(?:key|金鑰|rotate)/i.test(prompt)) {
-        focusAndHighlight('#details-key-mgmt');
+        handleJump('#details-key-mgmt');
       }
     }
 
@@ -431,10 +591,12 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
 
       const data = await res.json();
       if (!res.ok) {
-        pendingEl.innerHTML = formatAssistantMarkdown(
+        const errorText =
           (data && data.error && (data.error.message || data.error)) ||
-            `HTTP ${res.status}: Origin not authorized on /v1. Run: \`npx ai-proxy allow-origin ${win.location.origin}\``
-        );
+          `HTTP ${res.status}: Origin not authorized on /v1. Run: \`npx ai-proxy allow-origin ${win.location.origin}\``;
+        pendingEl.innerHTML = formatAssistantMarkdown(errorText);
+        messageHistory.push({ role: 'assistant', content: sanitizeForStorage(errorText) });
+        saveStoredHistory(messageHistory);
         return;
       }
 
@@ -444,16 +606,21 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
         data.choices[0].message &&
         data.choices[0].message.content;
 
-      pendingEl.innerHTML = formatAssistantMarkdown(content || JSON.stringify(data));
+      const replyContent = content || JSON.stringify(data);
+      pendingEl.innerHTML = formatAssistantMarkdown(replyContent);
+      messageHistory.push({ role: 'assistant', content: sanitizeForStorage(replyContent) });
+      saveStoredHistory(messageHistory);
       messagesEl.scrollTop = messagesEl.scrollHeight;
     } catch {
-      pendingEl.innerHTML = formatAssistantMarkdown(
+      const fallbackText =
         lang === 'zh-TW'
           ? '無法連線至本機 ai-proxy (/v1)。請確認已啟動 `npx ai-proxy serve` 並允許此 Origin。\n\n[🔌 接上本機 ai-proxy (Connect)](action:connect)'
-          : 'Could not reach local ai-proxy (/v1). Ensure `npx ai-proxy serve` is running and this Origin is allowed.\n\n[🔌 Connect to local ai-proxy](action:connect)'
-      );
+          : 'Could not reach local ai-proxy (/v1). Ensure `npx ai-proxy serve` is running and this Origin is allowed.\n\n[🔌 Connect to local ai-proxy](action:connect)';
+      pendingEl.innerHTML = formatAssistantMarkdown(fallbackText);
+      messageHistory.push({ role: 'assistant', content: sanitizeForStorage(fallbackText) });
+      saveStoredHistory(messageHistory);
     }
   });
 
-  return { setOpen, focusAndHighlight, triggerDashboardRefresh };
+  return { setOpen, focusAndHighlight, handleJump, triggerDashboardRefresh };
 }

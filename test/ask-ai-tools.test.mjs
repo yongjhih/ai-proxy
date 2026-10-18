@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { generateDefaultAssistantReply } from '../src/relay.mjs';
-import { formatAssistantMarkdown } from '../site/ask-ai.mjs';
+import { formatAssistantMarkdown, initAskAiDrawer } from '../site/ask-ai.mjs';
 
 const ROOT_DIR = path.resolve(import.meta.dirname, '..');
 
@@ -97,3 +97,79 @@ test('self-mcp.mjs registers all requested management tools and marks mutating t
     assert.ok(source.includes(`name: '${name}'`), `Missing tool in self-mcp.mjs: ${name}`);
   }
 });
+
+test('initAskAiDrawer restores message history and open state from sessionStorage', () => {
+  const store = new Map();
+  const fakeSessionStorage = {
+    getItem(k) { return store.get(k) || null; },
+    setItem(k, v) { store.set(k, String(v)); },
+    removeItem(k) { store.delete(k); },
+    clear() { store.clear(); }
+  };
+
+  // Pre-populate history and open state in sessionStorage
+  fakeSessionStorage.setItem(
+    'ai_proxy_ask_ai_history',
+    JSON.stringify([
+      { role: 'user', content: 'What is MCP Pages?' },
+      { role: 'assistant', content: 'MCP Pages connects static sites to AI.' }
+    ])
+  );
+  fakeSessionStorage.setItem('ai_proxy_ask_ai_open', 'true');
+
+  const elements = new Map();
+  function makeEl(tag, id = '') {
+    const el = {
+      tagName: tag.toUpperCase(),
+      id,
+      attributes: new Map(),
+      children: [],
+      style: {},
+      innerHTML: '',
+      textContent: '',
+      setAttribute(k, v) { el.attributes.set(k, v); },
+      getAttribute(k) { return el.attributes.get(k) || null; },
+      appendChild(child) { el.children.push(child); },
+      addEventListener() {},
+      focus() {},
+      scrollIntoView() {},
+      closest() { return null; },
+      parentNode: null
+    };
+    if (id) elements.set(id, el);
+    return el;
+  }
+
+  const triggerBtn = makeEl('button', 'ask-ai-trigger');
+  const drawer = makeEl('aside', 'ask-ai-drawer');
+  const closeBtn = makeEl('button', 'ask-ai-close');
+  const form = makeEl('form', 'ask-ai-form');
+  const input = makeEl('input', 'ask-ai-input');
+  const messagesEl = makeEl('div', 'ask-ai-messages');
+
+  const fakeDoc = {
+    getElementById(id) { return elements.get(id) || null; },
+    createElement(tag) { return makeEl(tag); },
+    querySelector() { return null; }
+  };
+
+  const fakeWin = {
+    document: fakeDoc,
+    sessionStorage: fakeSessionStorage,
+    location: { href: 'http://localhost/doc.html', pathname: '/doc.html', search: '', hash: '' },
+    history: { state: null },
+    addEventListener() {}
+  };
+
+  const drawerCtrl = initAskAiDrawer({ lang: 'en', win: fakeWin });
+  assert.ok(drawerCtrl);
+
+  // Drawer should be automatically restored to open
+  assert.equal(drawer.getAttribute('data-open'), 'true');
+
+  // Messages should be restored from sessionStorage
+  assert.equal(messagesEl.children.length, 2);
+  assert.equal(messagesEl.children[0].textContent, 'What is MCP Pages?');
+  assert.ok(messagesEl.children[1].innerHTML.includes('MCP Pages connects static sites to AI.'));
+});
+
