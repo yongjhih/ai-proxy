@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Example Static Notes Site · MCP Pages Demo</title>
+  <link rel="stylesheet" href="../../site/primer.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand-link" href="index.html">
+        <span>Static Notes Site (Example)</span>
+      </a>
+      <nav class="site-nav" aria-label="Example site navigation">
+        <a class="nav-link" href="index.html" aria-current="page">Notes</a>
+        <a class="nav-link" href="mcp.html">MCP Page</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="prose-measure">
+      <h1>Static Field Notes</h1>
+      <p>
+        This is a self-contained static website in <code>examples/notes-site/</code> demonstrating how any static site can expose WebMCP tools via <a href="mcp.html">MCP Page (<code>mcp.html</code>)</a>.
+      </p>
+      <p>
+        Register this site with your local <code>ai-proxy</code>:
+        <code>npx ai-proxy add https://example.github.io/notes-site/mcp.html</code>
+      </p>
+    </section>
+
+    <div class="primer-box" id="notes-list">
+      <div class="primer-box-header">
+        <h2>Published Notes</h2>
+      </div>
+      <div class="primer-box-row">Loading notes...</div>
+    </div>
+  </main>
+
+  <script type="module">
+    const container = document.getElementById('notes-list');
+    fetch('./notes.json')
+      .then((r) => r.json())
+      .then((notes) => {
+        const rows = notes
+          .map(
+            (n) => `
+          <div class="primer-box-row">
+            <strong>${n.title}</strong> <code>${n.id}</code>
+            <p style="margin:0.25rem 0 0;color:var(--fg-muted);">${n.body}</p>
+          </div>
+        `
+          )
+          .join('');
+        container.innerHTML = `<div class="primer-box-header"><h2>Published Notes (${notes.length})</h2></div>${rows}`;
+      });
+  </script>
+</body>
+</html>

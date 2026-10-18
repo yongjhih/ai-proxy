@@ -1,0 +1,20 @@
+{
+  "name": "ai-proxy · MCP Pages Development Environment",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "forwardPorts": [8788],
+  "portsAttributes": {
+    "8788": {
+      "label": "ai-proxy Local Relay",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "node --version && npm test",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+      }
+    }
+  }
+}

@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Static Notes Site · MCP Page</title>
+  <link rel="stylesheet" href="../../site/primer.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a class="brand-link" href="index.html">
+        <span>Static Notes Site (Example)</span>
+      </a>
+      <nav class="site-nav" aria-label="Example site navigation">
+        <a class="nav-link" href="index.html">Notes</a>
+        <a class="nav-link" href="mcp.html" aria-current="page">MCP Page</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="prose-measure">
+      <h1>Static Notes MCP Page</h1>
+      <p>
+        This page registers client-side WebMCP tools backed by <code>./notes.json</code> on <code>navigator.modelContext</code>.
+      </p>
+    </section>
+
+    <div id="mcp-catalog"></div>
+  </main>
+
+  <script type="module">
+    import { mountMcpPageUi } from './web/ui.mjs';
+
+    async function loadNotes(signal) {
+      const response = await fetch('./notes.json', { signal });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch notes.json: ${response.status}`);
+      }
+      return response.json();
+    }
+
+    const tools = [
+      {
+        name: 'list_notes',
+        description: 'List all published notes from this static notes site, optionally filtered by tag.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            tag: {
+              type: 'string',
+              description: 'Optional tag to filter notes by'
+            }
+          },
+          additionalProperties: false
+        },
+        annotations: {
+          title: 'List Notes',
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false
+        },
+        async execute({ tag } = {}, { signal } = {}) {
+          const notes = await loadNotes(signal);
+          const filtered = tag
+            ? notes.filter((n) => Array.isArray(n.tags) && n.tags.includes(tag))
+            : notes;
+          return {
+            total: filtered.length,
+            notes: filtered
+          };
+        }
+      },
+      {
+        name: 'search_notes',
+        description: 'Search published notes on this static site by keyword across title, body, and tags.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            query: {
+              type: 'string',
+              description: 'Search keyword'
+            }
+          },
+          required: ['query'],
+          additionalProperties: false
+        },
+        annotations: {
+          title: 'Search Notes',
+          readOnlyHint: true,
+          destructiveHint: false,
+          idempotentHint: true,
+          openWorldHint: false
+        },
+        async execute({ query }, { signal } = {}) {
+          const notes = await loadNotes(signal);
+          const q = String(query || '').toLowerCase();
+          const matches = notes.filter(
+            (n) =>
+              n.title.toLowerCase().includes(q) ||
+              n.body.toLowerCase().includes(q) ||
+              (Array.isArray(n.tags) && n.tags.some((t) => t.toLowerCase().includes(q)))
+          );
+          return {
+            query,
+            matches
+          };
+        }
+      }
+    ];
+
+    mountMcpPageUi({
+      container: document.getElementById('mcp-catalog'),
+      title: 'Static Notes WebMCP Tools',
+      tools
+    });
+  </script>
+</body>
+</html>
