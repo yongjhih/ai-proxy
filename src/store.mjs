@@ -147,7 +147,7 @@ export function createStore({ configDir = undefined } = {}) {
     return variants[0];
   }
 
-  function getOrCreatePageKey(rawUrl) {
+  function getOrCreatePageKey(rawUrl, { write = true } = {}) {
     const keyUrl = resolveSiteKeyInStore(rawUrl);
     if (!data.sites[keyUrl]) {
       data.sites[keyUrl] = {
@@ -156,12 +156,21 @@ export function createStore({ configDir = undefined } = {}) {
         key: generateSecretKey('mcp'),
         addedAt: new Date().toISOString(),
         lastSeenAt: null,
-        tools: []
+        tools: [],
+        write: write !== false
       };
       save();
-    } else if (!data.sites[keyUrl].key) {
-      data.sites[keyUrl].key = generateSecretKey('mcp');
-      save();
+    } else {
+      let changed = false;
+      if (!data.sites[keyUrl].key) {
+        data.sites[keyUrl].key = generateSecretKey('mcp');
+        changed = true;
+      }
+      if (data.sites[keyUrl].write === undefined) {
+        data.sites[keyUrl].write = true;
+        changed = true;
+      }
+      if (changed) save();
     }
     return data.sites[keyUrl].key;
   }
@@ -212,7 +221,7 @@ export function createStore({ configDir = undefined } = {}) {
     }
   }
 
-  function addSite({ url, name = undefined }) {
+  function addSite({ url, name = undefined, write = true }) {
     let raw = String(url || '').trim();
     try {
       const p = new URL(raw).pathname.replace(/\/+$/, '');
@@ -241,7 +250,7 @@ export function createStore({ configDir = undefined } = {}) {
       }
     } catch {}
 
-    const key = getOrCreatePageKey(keyUrl);
+    const key = getOrCreatePageKey(keyUrl, { write });
     data.sites[keyUrl].url = normalized;
     if (keyUrl !== normalized) {
       data.sites[normalized] = data.sites[keyUrl];
@@ -250,13 +259,28 @@ export function createStore({ configDir = undefined } = {}) {
     if (name && typeof name === 'string') {
       data.sites[normalized].name = name.trim();
     }
+    if (typeof write === 'boolean') {
+      data.sites[normalized].write = write;
+    } else if (data.sites[normalized].write === undefined) {
+      data.sites[normalized].write = true;
+    }
     save();
     return { ...data.sites[normalized], key };
   }
 
+  function setSitePermission(rawUrl, { write = true } = {}) {
+    const keyUrl = resolveSiteKeyInStore(rawUrl);
+    if (!data.sites[keyUrl]) {
+      throw new Error(`Site not found: ${rawUrl}`);
+    }
+    data.sites[keyUrl].write = Boolean(write);
+    save();
+    return { ...structuredClone(data.sites[keyUrl]), write: data.sites[keyUrl].write };
+  }
+
   function removeSite(rawUrl) {
     const keyUrl = resolveSiteKeyInStore(rawUrl);
-    const existing = data.sites[keyUrl] || null;
+    const existing = data.sites[keyUrl] ? { ...data.sites[keyUrl] } : null;
     for (const v of getEquivalentPageUrls(rawUrl)) {
       delete data.sites[v];
     }
@@ -288,13 +312,19 @@ export function createStore({ configDir = undefined } = {}) {
   }
 
   function listSites() {
-    return Object.values(data.sites).map((s) => structuredClone(s));
+    return Object.values(data.sites).map((s) => ({
+      ...structuredClone(s),
+      write: s.write !== false
+    }));
   }
 
   function getSite(rawUrl) {
     try {
       const keyUrl = resolveSiteKeyInStore(rawUrl);
-      return data.sites[keyUrl] ? structuredClone(data.sites[keyUrl]) : null;
+      if (!data.sites[keyUrl]) return null;
+      const clone = structuredClone(data.sites[keyUrl]);
+      clone.write = clone.write !== false;
+      return clone;
     } catch {
       return null;
     }
@@ -448,6 +478,7 @@ export function createStore({ configDir = undefined } = {}) {
     denyPrefix,
     isUrlAllowed,
     addSite,
+    setSitePermission,
     removeSite,
     updateSiteTools,
     listSites,

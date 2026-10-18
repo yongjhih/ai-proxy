@@ -611,7 +611,34 @@ export function createRelayServer({
       return;
     }
 
-    if (rpc.method === 'tools/list' || rpc.method === 'tools/call') {
+    if (rpc.method === 'tools/call') {
+      const site = activeStore.getSite(targetUrl);
+      if (site && site.write === false) {
+        const toolName = rpc.params && typeof rpc.params === 'object' ? rpc.params.name : null;
+        const toolDef = Array.isArray(site.tools) ? site.tools.find((t) => t.name === toolName) : null;
+        if (toolDef && !toolDef.annotations?.readOnlyHint) {
+          sendJson(
+            req,
+            res,
+            200,
+            {
+              jsonrpc: '2.0',
+              id: rpc.id ?? null,
+              error: {
+                code: -32602,
+                message: `Site is configured in read-only mode; mutating tool "${toolName}" is not permitted`
+              }
+            },
+            { cors: false }
+          );
+          return;
+        }
+      }
+      enqueueTabCall(targetUrl, rpc, req, res);
+      return;
+    }
+
+    if (rpc.method === 'tools/list') {
       enqueueTabCall(targetUrl, rpc, req, res);
       return;
     }
@@ -1177,7 +1204,11 @@ export function createRelayServer({
       } catch {}
       let site;
       try {
-        site = activeStore.addSite({ url: targetUrl, name: body.name });
+        site = activeStore.addSite({
+          url: targetUrl,
+          name: body.name,
+          write: body.write !== undefined ? Boolean(body.write) : true
+        });
       } catch (err) {
         sendJson(req, res, 400, { error: err.message });
         return;
@@ -1194,6 +1225,29 @@ export function createRelayServer({
         await openBrowser(launchUrl);
       }
       sendJson(req, res, 200, { ok: true, site });
+      return;
+    }
+
+    if (pathname === '/admin/v1/sites/permission' && req.method === 'POST') {
+      let body;
+      try {
+        body = await readJsonBody(req);
+      } catch (err) {
+        sendJson(req, res, 400, { error: err.message });
+        return;
+      }
+      if (!body.url) {
+        sendJson(req, res, 400, { error: 'Missing site url' });
+        return;
+      }
+      try {
+        const site = activeStore.setSitePermission(body.url, {
+          write: body.write !== undefined ? Boolean(body.write) : true
+        });
+        sendJson(req, res, 200, { ok: true, site });
+      } catch (err) {
+        sendJson(req, res, 400, { error: err.message });
+      }
       return;
     }
 

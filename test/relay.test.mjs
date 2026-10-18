@@ -331,3 +331,77 @@ test('Relay enforces all security rejection paths, Claude Code quirks, and CORS 
   assert.equal(preflightRes.headers.get('access-control-allow-origin'), 'https://example.github.io');
   assert.equal(preflightRes.headers.get('access-control-allow-private-network'), 'true');
 });
+
+test('Relay enforces site read/write permissions: defaults to true, toggleable, and blocks mutating tools on read-only mode', async (t) => {
+  const configDir = makeTempConfigDir();
+  const store = createStore({ configDir });
+
+  // 1. Add site defaults to write: true
+  const site1 = store.addSite({ url: 'https://example.github.io/my-docs/mcp', name: 'my-docs' });
+  assert.equal(site1.write, true, 'New site must default to write: true');
+
+  // Update site tools: 1 read-only tool, 1 mutating tool
+  store.updateSiteTools(site1.url, [
+    {
+      name: 'get_info',
+      description: 'Read-only tool',
+      inputSchema: { type: 'object' },
+      annotations: { readOnlyHint: true }
+    },
+    {
+      name: 'create_item',
+      description: 'Mutating tool',
+      inputSchema: { type: 'object' },
+      annotations: { readOnlyHint: false }
+    }
+  ]);
+
+  const relay = createRelayServer({ store, port: 0 });
+  const { port } = await relay.start();
+  t.after(async () => {
+    await relay.stop();
+    fs.rmSync(configDir, { recursive: true, force: true });
+  });
+
+  const adminKey = store.getAdminKey();
+
+  // 2. Toggle to read-only via /admin/v1/sites/permission
+  const permRes = await fetch(`http://127.0.0.1:${port}/admin/v1/sites/permission`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${adminKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ url: site1.url, write: false })
+  }).then((r) => r.json());
+  assert.equal(permRes.ok, true);
+  assert.equal(permRes.site.write, false);
+
+  // 3. Mutating tool call on read-only site is blocked with -32602
+  const mutateRes = await fetch(`http://127.0.0.1:${port}/mcp?url=${encodeURIComponent(site1.url)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 99,
+      method: 'tools/call',
+      params: { name: 'create_item', arguments: {} }
+    })
+  }).then((r) => r.json());
+  assert.equal(mutateRes.id, 99);
+  assert.equal(mutateRes.error.code, -32602);
+  assert.ok(mutateRes.error.message.includes('read-only mode'));
+
+  // 4. Toggle back to read/write mode
+  const permRes2 = await fetch(`http://127.0.0.1:${port}/admin/v1/sites/permission`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${adminKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ url: site1.url, write: true })
+  }).then((r) => r.json());
+  assert.equal(permRes2.ok, true);
+  assert.equal(permRes2.site.write, true);
+});
+

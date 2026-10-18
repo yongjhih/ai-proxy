@@ -407,13 +407,15 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
       if (actionName === 'add-mcp' || actionName === 'add-site') {
         const url = params.get('url');
         const name = params.get('name') || undefined;
+        const writeParam = params.get('write');
+        const write = writeParam === null ? true : writeParam !== 'false';
         const res = await fetch(`http://127.0.0.1:${port}/admin/v1/sites`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${hs.adminKey}`
           },
-          body: JSON.stringify({ url, name })
+          body: JSON.stringify({ url, name, write })
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -428,8 +430,31 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
 
         appendAssistantFormatted(
           lang === 'zh-TW'
-            ? `✅ 成功在 Dashboard 新增 MCP 站點 \`${data.site?.url || url}\`！已自動設定 URL Prefix Allowlist 與 Origin 授權。\n\n[📋 前往查看該站點](${siteId})`
-            : `✅ Successfully added MCP site \`${data.site?.url || url}\`! Auto-configured URL prefix allowlist & origin.\n\n[📋 View registered site](${siteId})`
+            ? `✅ 成功在 Dashboard 新增 MCP 站點 \`${data.site?.url || url}\`（${data.site?.write !== false ? '讀寫支援' : '唯讀模式'}）！已自動設定 URL Prefix Allowlist 與 Origin 授權。\n\n[📋 前往查看該站點](${siteId})`
+            : `✅ Successfully added MCP site \`${data.site?.url || url}\` (${data.site?.write !== false ? 'Read/Write' : 'Read-Only'})! Auto-configured URL prefix allowlist & origin.\n\n[📋 View registered site](${siteId})`
+        );
+      } else if (actionName === 'set-permission') {
+        const url = params.get('url');
+        const write = params.get('write') === 'true';
+        const res = await fetch(`http://127.0.0.1:${port}/admin/v1/sites/permission`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${hs.adminKey}`
+          },
+          body: JSON.stringify({ url, write })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+
+        btn.textContent = `✅ ${lang === 'zh-TW' ? '已更新' : 'Updated'}`;
+        btn.classList.remove('btn-primary');
+        triggerDashboardRefresh();
+
+        appendAssistantFormatted(
+          lang === 'zh-TW'
+            ? `✅ 成功更新站點 \`${data.site?.url || url}\` 存取模式為：${data.site?.write !== false ? '讀寫支援 (Read/Write)' : '唯讀模式 (Read-Only)'}。`
+            : `✅ Successfully updated site \`${data.site?.url || url}\` mode to: ${data.site?.write !== false ? 'Read/Write' : 'Read-Only'}.`
         );
       } else if (actionName === 'remove-mcp' || actionName === 'remove-site') {
         const url = params.get('url');
