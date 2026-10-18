@@ -5,7 +5,8 @@ import {
   matchesPrefix,
   isLocalhostUrl,
   isAllowedPageUrl,
-  parseMcpRouteUrl
+  parseMcpRouteUrl,
+  resolveMcpEndpoint
 } from '../web/url.mjs';
 
 test('normalizePageUrl strips query, hash, credentials, default ports, and normalizes index.html', () => {
@@ -88,3 +89,45 @@ test('parseMcpRouteUrl resolves both /mcp?url=... and /mcp/<host>/<path>', () =>
   );
   assert.equal(parseMcpRouteUrl('/mcp'), null);
 });
+
+test('resolveMcpEndpoint auto-resolves /mcp or /mcp.html and preserves explicit endpoints', async () => {
+  // 1. Explicit /mcp or .html is kept as-is without probe
+  assert.equal(
+    await resolveMcpEndpoint('https://example.github.io/app/mcp'),
+    'https://example.github.io/app/mcp'
+  );
+  assert.equal(
+    await resolveMcpEndpoint('https://example.github.io/app/mcp.html'),
+    'https://example.github.io/app/mcp.html'
+  );
+
+  // 2. Directory URL with mock fetch returning 200 for /mcp
+  const mockFetchMcp = async (url) => {
+    if (url === 'https://example.github.io/docs/mcp') return { ok: true, status: 200 };
+    return { ok: false, status: 404 };
+  };
+  assert.equal(
+    await resolveMcpEndpoint('https://example.github.io/docs/', { fetchFn: mockFetchMcp }),
+    'https://example.github.io/docs/mcp'
+  );
+
+  // 3. Directory URL with mock fetch returning 404 for /mcp but 200 for /mcp.html
+  const mockFetchHtml = async (url) => {
+    if (url === 'https://example.github.io/notes/mcp.html') return { ok: true, status: 200 };
+    return { ok: false, status: 404 };
+  };
+  assert.equal(
+    await resolveMcpEndpoint('https://example.github.io/notes', { fetchFn: mockFetchHtml }),
+    'https://example.github.io/notes/mcp.html'
+  );
+
+  // 4. Fallback to /mcp when neither responds 200 or fetch throws
+  const mockFailingFetch = async () => {
+    throw new Error('network down');
+  };
+  assert.equal(
+    await resolveMcpEndpoint('https://example.github.io/offline/', { fetchFn: mockFailingFetch }),
+    'https://example.github.io/offline/mcp'
+  );
+});
+

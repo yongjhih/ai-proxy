@@ -304,19 +304,46 @@ test(
       );
       assert.equal(await page.evalJs(`window.location.hash`), '');
       assert.equal(await page.evalJs(`window.history.state.__aiProxy.adminKey`), adminKey);
+      assert.ok(
+        (await page.evalJs(`document.querySelector('#dashboard-root h2').textContent`)).includes('MCP sites'),
+        'Heading must be MCP sites (N)'
+      );
+      assert.ok(
+        await page.evalJs(`Boolean(document.querySelector('#details-allow-prefix summary'))`),
+        'URL Prefix Allowlist is folded inside details'
+      );
+      assert.ok(
+        await page.evalJs(`Boolean(document.querySelector('#details-allowed-origins summary'))`),
+        'Chat Completions Allowed Origins is folded inside details'
+      );
 
-      // Click Add Site
+      // Click Add Site (using directory URL to test automatic /mcp endpoint, prefix, and origin allowance)
       await page.evalJs(`
         (() => {
           const form = document.getElementById('form-add-site');
-          form.querySelector('input[name="url"]').value = 'https://example.github.io/demo/mcp.html';
+          form.querySelector('input[name="url"]').value = 'https://example.github.io/demo/';
           form.querySelector('input[name="name"]').value = 'demo-site';
           form.requestSubmit();
         })()
       `);
-      await new Promise((r) => setTimeout(r, 250));
+
+      let added = false;
+      for (let i = 0; i < 30; i++) {
+        await new Promise((r) => setTimeout(r, 100));
+        const text = await page.evalJs(`document.getElementById('dashboard-root').textContent`);
+        if (text.includes('demo-site')) {
+          added = true;
+          break;
+        }
+      }
+      assert.ok(added, 'Site must appear in dashboard after addSite');
       assert.ok(
-        (await page.evalJs(`document.getElementById('dashboard-root').textContent`)).includes('demo-site')
+        relay.store.getSnapshot().allowlist.includes('https://example.github.io/demo/'),
+        'Directory prefix automatically allowed'
+      );
+      assert.ok(
+        relay.store.getSnapshot().allowedOrigins.includes('https://example.github.io'),
+        'Site origin automatically allowed on /v1'
       );
 
       // Click Rotate single site key

@@ -542,6 +542,33 @@ pre code {
   border-bottom: none;
 }
 
+/* Collapsible Primer Box with <details> */
+details.primer-box > summary.primer-box-header {
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+details.primer-box > summary.primer-box-header::-webkit-details-marker {
+  display: none;
+}
+
+details.primer-box:not([open]) > summary.primer-box-header {
+  border-bottom: none;
+  border-radius: 5px;
+}
+
+details.primer-box[open] > summary.primer-box-header .details-marker {
+  transform: rotate(90deg);
+}
+
+.details-marker {
+  display: inline-block;
+  font-size: 0.6875rem;
+  transition: transform 0.15s ease-in-out;
+  color: var(--fg-muted);
+}
+
 /* Semantic Badges & Banners */
 .badge {
   display: inline-flex;

@@ -4,7 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { normalizePageUrl, parseMcpRouteUrl } from '../web/url.mjs';
+import { normalizePageUrl, parseMcpRouteUrl, resolveMcpEndpoint } from '../web/url.mjs';
 import { MCP_PROTOCOL_VERSION } from '../web/dispatch.mjs';
 import { createStore, validateAllowToolSpec, getEquivalentPageUrls } from './store.mjs';
 
@@ -987,9 +987,13 @@ export function createRelayServer({
         sendJson(req, res, 400, { error: 'Missing site url' });
         return;
       }
+      let targetUrl = body.url;
+      try {
+        targetUrl = await resolveMcpEndpoint(body.url);
+      } catch {}
       let site;
       try {
-        site = activeStore.addSite({ url: body.url, name: body.name });
+        site = activeStore.addSite({ url: targetUrl, name: body.name });
       } catch (err) {
         sendJson(req, res, 400, { error: err.message });
         return;

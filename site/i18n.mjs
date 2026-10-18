@@ -37,8 +37,8 @@ export const STRINGS = {
     dash_connect_btn: 'Connect to Local ai-proxy',
     dash_connect_desc:
       'No admin key is loaded in this tab. Click Connect to ask your local ai-proxy to open an authenticated dashboard tab.',
-    dash_sites_heading: 'Registered MCP Sites',
-    dash_add_site_btn: 'Add & Allow Site',
+    dash_sites_heading: 'MCP sites',
+    dash_add_site_btn: 'Add Site',
     dash_allowlist_heading: 'URL Prefix Allowlist',
     dash_origins_heading: '/v1 Chat Allowed Origins',
     dash_keys_heading: 'Key Rotation',
@@ -78,8 +78,8 @@ export const STRINGS = {
     dash_connect_btn: '接上本機 ai-proxy',
     dash_connect_desc:
       '此分頁尚未持有管理金鑰。按一下「接上本機 ai-proxy」，由本機轉送開啟帶金鑰的儀表板分頁。',
-    dash_sites_heading: '已註冊的 MCP 網站',
-    dash_add_site_btn: '新增並允許網站',
+    dash_sites_heading: 'MCP sites',
+    dash_add_site_btn: '新增網站',
     dash_allowlist_heading: '網址前綴允許清單',
     dash_origins_heading: '/v1 對話允許的 Origin',
     dash_keys_heading: '金鑰輪換',

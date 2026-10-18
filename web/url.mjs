@@ -113,3 +113,56 @@ export function parseMcpRouteUrl(reqUrl) {
     return null;
   }
 }
+
+export async function resolveMcpEndpoint(inputUrl, { fetchFn = globalThis.fetch } = {}) {
+  let clean = String(inputUrl || '').trim();
+  if (!clean) return clean;
+  if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+    clean = `https://${clean}`;
+  }
+  let parsed;
+  try {
+    parsed = new URL(clean);
+  } catch {
+    return clean;
+  }
+
+  // Strip trailing slashes
+  let pathname = parsed.pathname.replace(/\/+$/, '');
+  // If user already specified an endpoint ending in /mcp or an extension like .html
+  if (pathname.endsWith('/mcp') || pathname.endsWith('.html')) {
+    parsed.pathname = pathname;
+    return parsed.toString();
+  }
+
+  const base = `${parsed.origin}${pathname}`;
+  const candidateMcp = `${base}/mcp`;
+  const candidateHtml = `${base}/mcp.html`;
+
+  if (typeof fetchFn === 'function') {
+    // 1. Try HEAD /mcp
+    try {
+      const res = await fetchFn(candidateMcp, {
+        method: 'HEAD',
+        signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(600) : undefined
+      });
+      if (res && (res.status === 200 || res.ok)) {
+        return candidateMcp;
+      }
+    } catch {}
+
+    // 2. Try HEAD /mcp.html
+    try {
+      const res = await fetchFn(candidateHtml, {
+        method: 'HEAD',
+        signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(600) : undefined
+      });
+      if (res && (res.status === 200 || res.ok)) {
+        return candidateHtml;
+      }
+    } catch {}
+  }
+
+  // Default fallback: candidateMcp
+  return candidateMcp;
+}
