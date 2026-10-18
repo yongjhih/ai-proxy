@@ -221,7 +221,13 @@ export function createStore({ configDir = undefined } = {}) {
     }
   }
 
-  function addSite({ url, name = undefined, write = true }) {
+  function addSite({
+    url,
+    name = undefined,
+    write = true,
+    allowOrigin: shouldAllowOrigin = true,
+    allowPrefix: shouldAllowPrefix = true
+  }) {
     let raw = String(url || '').trim();
     try {
       const p = new URL(raw).pathname.replace(/\/+$/, '');
@@ -234,17 +240,19 @@ export function createStore({ configDir = undefined } = {}) {
 
     const normalized = normalizePageUrl(raw);
     const keyUrl = resolveSiteKeyInStore(normalized);
-    allowPrefix(normalized);
+    if (shouldAllowPrefix !== false) {
+      allowPrefix(normalized);
+    }
 
-    // Automatically allow directory prefix and origin
+    // Automatically allow directory prefix and origin if requested
     try {
       const parsed = new URL(normalized);
-      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      if (shouldAllowOrigin !== false && (parsed.protocol === 'http:' || parsed.protocol === 'https:')) {
         allowOrigin(parsed.origin);
       }
       const pathname = parsed.pathname;
       const lastSlash = pathname.lastIndexOf('/');
-      if (lastSlash > 0) {
+      if (shouldAllowPrefix !== false && lastSlash > 0) {
         const dirPrefix = `${parsed.origin}${pathname.slice(0, lastSlash + 1)}`;
         allowPrefix(dirPrefix);
       }

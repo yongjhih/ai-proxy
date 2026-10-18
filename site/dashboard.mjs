@@ -271,8 +271,20 @@ export async function mountAdminDashboard({
     const siteRows =
       status.sites && status.sites.length > 0
         ? status.sites
-            .map(
-              (s) => `
+            .map((s) => {
+              const siteOrigin = (() => {
+                try {
+                  return new URL(s.url).origin;
+                } catch {
+                  return '';
+                }
+              })();
+              const isOriginAllowed = Boolean(
+                siteOrigin &&
+                  Array.isArray(status.allowedOrigins) &&
+                  status.allowedOrigins.includes(siteOrigin)
+              );
+              return `
           <tr data-site-url="${escapeHtml(s.url)}" id="site-row-${encodeURIComponent(s.url).replace(/[^a-zA-Z0-9_-]/g, '_')}">
             <td><code>${escapeHtml(s.name)}</code></td>
             <td><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.url)}</a></td>
@@ -282,21 +294,41 @@ export async function mountAdminDashboard({
               </span>
             </td>
             <td>
-              <span class="badge ${s.write !== false ? 'badge-success' : 'badge-readonly'}" title="${s.write !== false ? 'Read/Write allowed' : 'Read-only mode'}">
-                ${s.write !== false ? 'Read/Write' : 'Read-Only'}
-              </span>
+              <div style="display:flex;flex-direction:column;gap:0.25rem;">
+                <span class="badge ${s.write !== false ? 'badge-success' : 'badge-readonly'}" title="${s.write !== false ? 'Read/Write allowed' : 'Read-only mode'}">
+                  ${s.write !== false ? 'Read/Write' : 'Read-Only'}
+                </span>
+                ${
+                  siteOrigin
+                    ? `<span class="badge ${isOriginAllowed ? 'badge-success' : 'badge-neutral'}" title="${
+                        isOriginAllowed ? 'Origin authorized on /v1' : 'Origin not authorized on /v1'
+                      }">
+                    ${isOriginAllowed ? 'Origin: Allowed' : 'Origin: Denied'}
+                  </span>`
+                    : ''
+                }
+              </div>
             </td>
             <td><code>${Array.isArray(s.tools) ? s.tools.length : 0}</code></td>
             <td>
               <div class="form-row">
                 <button type="button" class="btn btn-sm btn-toggle-site-mode" data-url="${escapeHtml(s.url)}" data-write="${s.write !== false ? 'false' : 'true'}">${s.write !== false ? 'Set Read-Only' : 'Allow Write'}</button>
+                ${
+                  siteOrigin
+                    ? `<button type="button" class="btn btn-sm btn-toggle-site-origin" data-origin="${escapeHtml(
+                        siteOrigin
+                      )}" data-allowed="${isOriginAllowed ? 'true' : 'false'}">${
+                        isOriginAllowed ? 'Revoke Origin' : 'Allow Origin'
+                      }</button>`
+                    : ''
+                }
                 <button type="button" class="btn btn-sm btn-rotate-site" data-url="${escapeHtml(s.url)}">Rotate Key</button>
                 <button type="button" class="btn btn-sm btn-danger btn-remove-site" data-url="${escapeHtml(s.url)}">Remove</button>
               </div>
             </td>
           </tr>
-        `
-            )
+        `;
+            })
             .join('')
         : `<tr><td colspan="6">No MCP sites registered yet. Add a site below to allow its prefix and register it in Claude Code.</td></tr>`;
 
@@ -345,17 +377,27 @@ export async function mountAdminDashboard({
             <span class="badge badge-success">Port ${escapeHtml(status.port)} · Authenticated</span>
           </div>
           <div class="primer-box-row">
-            <form id="form-add-site" class="form-row" style="flex-wrap:wrap;align-items:center;gap:0.5rem;">
+            <form id="form-add-site" class="form-row" style="flex-wrap:wrap;align-items:center;gap:0.75rem;">
               <input type="url" name="url" placeholder="https://example.github.io/example/" required style="flex:1;min-width:240px;" />
               <input type="text" name="name" placeholder="Optional name (e.g. docs-site)" style="min-width:180px;" />
-              <label style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.875rem;cursor:pointer;user-select:none;">
-                <input type="checkbox" name="write" value="true" checked id="checkbox-add-site-write" />
-                <span>Allow Write (讀寫支援)</span>
-              </label>
+              <div style="display:inline-flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                <label style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.875rem;cursor:pointer;user-select:none;">
+                  <input type="checkbox" name="write" value="true" checked id="checkbox-add-site-write" />
+                  <span>Allow Write (讀寫支援)</span>
+                </label>
+                <label style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.875rem;cursor:pointer;user-select:none;">
+                  <input type="checkbox" name="allowOrigin" value="true" checked id="checkbox-add-site-origin" />
+                  <span>Allow Origin (自動授權 Origin /v1)</span>
+                </label>
+                <label style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.875rem;cursor:pointer;user-select:none;">
+                  <input type="checkbox" name="allowPrefix" value="true" checked id="checkbox-add-site-prefix" />
+                  <span>Allow Prefix (自動加入路徑白名單)</span>
+                </label>
+              </div>
               <button type="submit" class="btn btn-primary" id="btn-add-site">Add Site</button>
             </form>
             <div style="font-size:0.75rem;color:var(--fg-muted);margin-top:0.375rem;">
-              支援直接填寫站點路徑（如 <code>https://example.github.io/example/</code>），自動尋找預設 <code>/mcp</code> 或 <code>/mcp.html</code> 並自動加入 URL Prefix 與 Origin 授權。預設開啟讀寫支援（可取消勾選設為唯讀）。
+              支援直接填寫站點路徑（如 <code>https://example.github.io/example/</code>），自動尋找預設 <code>/mcp</code> 或 <code>/mcp.html</code>。可勾選自動授權 Origin（供 <code>/v1</code> 存取）、URL Prefix 白名單與讀寫模式（預設全勾選）。
             </div>
           </div>
           <div class="data-table-wrap" style="margin:0;border:none;border-top:1px solid var(--border-default);border-radius:0;">
@@ -444,19 +486,24 @@ export async function mountAdminDashboard({
         const inputUrl = String(fd.get('url') || '').trim();
         const name = String(fd.get('name') || '').trim() || undefined;
         const writeCheckbox = addSiteForm.querySelector('#checkbox-add-site-write');
+        const originCheckbox = addSiteForm.querySelector('#checkbox-add-site-origin');
+        const prefixCheckbox = addSiteForm.querySelector('#checkbox-add-site-prefix');
         const write = writeCheckbox ? writeCheckbox.checked : true;
+        const allowOrigin = originCheckbox ? originCheckbox.checked : true;
+        const allowPrefix = prefixCheckbox ? prefixCheckbox.checked : true;
         try {
           const fetchFn = win && typeof win.fetch === 'function' ? win.fetch.bind(win) : globalThis.fetch;
           const targetUrl = await resolveMcpEndpoint(inputUrl, { fetchFn });
           const res = await adminFetch('/admin/v1/sites', {
             method: 'POST',
-            body: JSON.stringify({ url: targetUrl, name, write })
+            body: JSON.stringify({ url: targetUrl, name, write, allowOrigin, allowPrefix })
           });
-          setFeedback(
-            `Added MCP site: ${res.site.url} (${
-              res.site.write !== false ? 'Read/Write' : 'Read-Only'
-            }, automatically allowed prefix & origin)`
-          );
+          const extras = [];
+          if (res.site.write !== false) extras.push('Read/Write');
+          else extras.push('Read-Only');
+          if (allowOrigin) extras.push('Origin allowed');
+          if (allowPrefix) extras.push('Prefix allowed');
+          setFeedback(`Added MCP site: ${res.site.url} (${extras.join(', ')})`);
         } catch (err) {
           setFeedback(err.message, 'danger');
         }
@@ -475,6 +522,31 @@ export async function mountAdminDashboard({
             body: JSON.stringify({ url, write: nextWrite })
           });
           setFeedback(`Updated site mode for ${url} to ${nextWrite ? 'Read/Write' : 'Read-Only'}`);
+        } catch (err) {
+          setFeedback(err.message, 'danger');
+        }
+        await refreshDashboard();
+      });
+    }
+
+    // Wire Toggle Site Origin
+    for (const btn of container.querySelectorAll('.btn-toggle-site-origin')) {
+      btn.addEventListener('click', async () => {
+        const origin = btn.getAttribute('data-origin');
+        const isCurrentlyAllowed = btn.getAttribute('data-allowed') === 'true';
+        try {
+          await adminFetch('/admin/v1/origins', {
+            method: 'POST',
+            body: JSON.stringify({
+              action: isCurrentlyAllowed ? 'deny' : 'allow',
+              origin
+            })
+          });
+          setFeedback(
+            isCurrentlyAllowed
+              ? `Revoked /v1 origin: ${origin}`
+              : `Allowed /v1 origin: ${origin}`
+          );
         } catch (err) {
           setFeedback(err.message, 'danger');
         }

@@ -42,10 +42,22 @@ export async function initSelfMcpPage({
     return data;
   }
 
-  async function executeAddSite({ url, name, write = true }) {
+  async function executeAddSite({
+    url,
+    name,
+    write = true,
+    allowOrigin = true,
+    allowPrefix = true
+  }) {
     const res = await fetchAdminJson('/admin/v1/sites', {
       method: 'POST',
-      body: JSON.stringify({ url, name, write: write !== false })
+      body: JSON.stringify({
+        url,
+        name,
+        write: write !== false,
+        allowOrigin: allowOrigin !== false,
+        allowPrefix: allowPrefix !== false
+      })
     });
     if (adminCtrl) {
       await adminCtrl.refreshDashboard();
@@ -351,6 +363,16 @@ export async function initSelfMcpPage({
             type: 'boolean',
             description: 'Allow read/write access (default: true). Set false for read-only mode.',
             default: true
+          },
+          allowOrigin: {
+            type: 'boolean',
+            description: 'Automatically allow the site origin to access /v1 (default: true). Set false to leave origin unallowed.',
+            default: true
+          },
+          allowPrefix: {
+            type: 'boolean',
+            description: 'Automatically allow the site URL prefix (default: true). Set false to skip prefix allowlist.',
+            default: true
           }
         },
         required: ['url'],
@@ -383,6 +405,16 @@ export async function initSelfMcpPage({
           write: {
             type: 'boolean',
             description: 'Allow read/write access (default: true). Set false for read-only mode.',
+            default: true
+          },
+          allowOrigin: {
+            type: 'boolean',
+            description: 'Automatically allow the site origin to access /v1 (default: true). Set false to leave origin unallowed.',
+            default: true
+          },
+          allowPrefix: {
+            type: 'boolean',
+            description: 'Automatically allow the site URL prefix (default: true). Set false to skip prefix allowlist.',
             default: true
           }
         },

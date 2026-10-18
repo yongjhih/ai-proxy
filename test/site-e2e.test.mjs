@@ -325,6 +325,11 @@ test(
       );
       assert.equal(isCheckboxChecked, true, 'Write checkbox must be checked by default');
 
+      const isOriginCheckboxChecked = await page.evalJs(
+        `Boolean(document.getElementById('checkbox-add-site-origin')?.checked)`
+      );
+      assert.equal(isOriginCheckboxChecked, true, 'Allow Origin checkbox must be checked by default');
+
       // Click Add Site (using directory URL to test automatic /mcp endpoint, prefix, and origin allowance)
       await page.evalJs(`
         (() => {
@@ -357,13 +362,24 @@ test(
       assert.equal(demoSite.write, true, 'MCP site added via dashboard form must have write: true by default');
 
       // Toggle mode button: switch to read-only
-      await page.evalJs(`
+      await page.evalJs(`(() => {
         const btn = document.querySelector('tr[data-site-url="https://example.github.io/demo/mcp"] .btn-toggle-site-mode');
         if (btn) btn.click();
-      `);
+      })()`);
       await new Promise((r) => setTimeout(r, 200));
       const demoSiteAfterToggle = relay.store.getSite('https://example.github.io/demo/mcp');
       assert.equal(demoSiteAfterToggle.write, false, 'Site mode should be toggled to read-only');
+
+      // Toggle origin button: revoke origin
+      await page.evalJs(`(() => {
+        const btn = document.querySelector('tr[data-site-url="https://example.github.io/demo/mcp"] .btn-toggle-site-origin');
+        if (btn) btn.click();
+      })()`);
+      await new Promise((r) => setTimeout(r, 200));
+      assert.ok(
+        !relay.store.getSnapshot().allowedOrigins.includes('https://example.github.io'),
+        'Origin revoked via table button'
+      );
 
       // Click Rotate single site key
       await page.evalJs(`document.querySelector('.btn-rotate-site').click()`);

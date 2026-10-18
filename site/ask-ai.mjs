@@ -409,13 +409,17 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
         const name = params.get('name') || undefined;
         const writeParam = params.get('write');
         const write = writeParam === null ? true : writeParam !== 'false';
+        const originParam = params.get('allowOrigin');
+        const allowOrigin = originParam === null ? true : originParam !== 'false';
+        const prefixParam = params.get('allowPrefix');
+        const allowPrefix = prefixParam === null ? true : prefixParam !== 'false';
         const res = await fetch(`http://127.0.0.1:${port}/admin/v1/sites`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${hs.adminKey}`
           },
-          body: JSON.stringify({ url, name, write })
+          body: JSON.stringify({ url, name, write, allowOrigin, allowPrefix })
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
