@@ -376,9 +376,11 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
           win.sessionStorage.setItem(STORAGE_KEY_OPEN, 'true');
         } catch {}
       }
+      const addUrl = params.get('add-url') || params.get('add_url') || params.get('add');
+      const addQuery = addUrl ? `&add-url=${encodeURIComponent(addUrl)}` : '';
       win.location.href = `http://127.0.0.1:${port}/admin/v1/open-dashboard?redirect=${encodeURIComponent(
         redirectUrl
-      )}`;
+      )}${addQuery}`;
       return;
     }
 
@@ -391,10 +393,12 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
     }
 
     if (!hs.adminKey) {
+      const pendingUrl = (actionName === 'add-mcp' || actionName === 'add-site') ? params.get('url') : '';
+      const connectAction = pendingUrl ? `action:connect?add-url=${encodeURIComponent(pendingUrl)}` : 'action:connect';
       appendAssistantFormatted(
         lang === 'zh-TW'
-          ? '此操作需要本機管理金鑰（admin-key）。\n\n[🔌 接上本機 ai-proxy (Connect)](action:connect)'
-          : 'This action requires an admin key.\n\n[🔌 Connect to local ai-proxy](action:connect)'
+          ? `此操作需要本機管理金鑰（admin-key）。\n\n[🔌 接上本機 ai-proxy (Connect)](${connectAction})`
+          : `This action requires an admin key.\n\n[🔌 Connect to local ai-proxy](${connectAction})`
       );
       return;
     }

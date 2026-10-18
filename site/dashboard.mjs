@@ -15,6 +15,24 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+export function getRequestedAddUrl(win = globalThis.window) {
+  if (!win || !win.location) return '';
+  // Check hash first
+  const rawHash = win.location.hash ? win.location.hash.replace(/^#/, '') : '';
+  if (rawHash) {
+    const hashParams = new URLSearchParams(rawHash);
+    const fromHash = hashParams.get('add-url') || hashParams.get('add_url') || hashParams.get('add');
+    if (fromHash) return fromHash.trim();
+  }
+  // Check search query
+  if (win.location.search) {
+    const searchParams = new URLSearchParams(win.location.search);
+    const fromSearch = searchParams.get('add-url') || searchParams.get('add_url') || searchParams.get('add');
+    if (fromSearch) return fromSearch.trim();
+  }
+  return '';
+}
+
 export async function mountAdminDashboard({
   container,
   adminKey: explicitAdminKey = undefined,
@@ -163,7 +181,19 @@ export async function mountAdminDashboard({
   async function renderUnauthenticated() {
     const reachable = await probeRelay({ mcpPort });
     const pageUrl = win && win.location ? win.location.href.split('#')[0] : '';
-    const connectHref = `${baseUrl}/admin/v1/open-dashboard?redirect=${encodeURIComponent(pageUrl)}`;
+    const pendingAddUrl = getRequestedAddUrl(win);
+    let connectHref = `${baseUrl}/admin/v1/open-dashboard?redirect=${encodeURIComponent(pageUrl)}`;
+    if (pendingAddUrl) {
+      connectHref += `&add-url=${encodeURIComponent(pendingAddUrl)}`;
+    }
+
+    const pendingAddBanner = pendingAddUrl
+      ? `
+        <div class="flash-banner flash-info" id="pending-add-banner" style="margin-bottom:0.75rem;">
+          <strong>準備新增站點：</strong> <code>${escapeHtml(pendingAddUrl)}</code>。<br />
+          點擊下方「Connect (接上本機 ai-proxy)」連線後將自動為您帶入新增。
+        </div>`
+      : '';
 
     container.innerHTML = `
       <div class="primer-box" id="dashboard-connect-box">
@@ -174,6 +204,7 @@ export async function mountAdminDashboard({
           </span>
         </div>
         <div class="primer-box-row">
+          ${pendingAddBanner}
           <p>
             Connect to your local <code>ai-proxy</code> relay to manage registered MCP sites, URL prefix allowlists, and key rotation directly in this tab.
           </p>
@@ -479,6 +510,40 @@ export async function mountAdminDashboard({
 
     // Wire Add Site
     const addSiteForm = container.querySelector('#form-add-site');
+    const requestedAddUrl = getRequestedAddUrl(win);
+    if (addSiteForm && requestedAddUrl) {
+      const urlInput = addSiteForm.querySelector('input[name="url"]');
+      if (urlInput && !urlInput.value) {
+        urlInput.value = requestedAddUrl;
+        const alreadyAdded =
+          status.sites &&
+          status.sites.some(
+            (s) =>
+              s.url === requestedAddUrl ||
+              s.url.replace(/\/$/, '') === requestedAddUrl.replace(/\/$/, '')
+          );
+        if (!alreadyAdded && !feedbackMessage) {
+          setFeedback(`準備新增 MCP 站點：${requestedAddUrl}。請點擊「Add Site」確認新增。`);
+          const existingFeedback = container.querySelector('#admin-feedback');
+          if (existingFeedback) {
+            existingFeedback.textContent = feedbackMessage;
+          } else {
+            const fbDiv = document.createElement('div');
+            fbDiv.className = 'flash-banner';
+            fbDiv.id = 'admin-feedback';
+            fbDiv.textContent = feedbackMessage;
+            container.querySelector('.admin-dashboard')?.prepend(fbDiv);
+          }
+        }
+        setTimeout(() => {
+          try {
+            addSiteForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            urlInput.focus();
+          } catch {}
+        }, 100);
+      }
+    }
+
     if (addSiteForm) {
       addSiteForm.addEventListener('submit', async (ev) => {
         ev.preventDefault();
@@ -504,6 +569,31 @@ export async function mountAdminDashboard({
           if (allowOrigin) extras.push('Origin allowed');
           if (allowPrefix) extras.push('Prefix allowed');
           setFeedback(`Added MCP site: ${res.site.url} (${extras.join(', ')})`);
+
+          // Clean up add-url parameter from URL hash if present
+          if (
+            win &&
+            win.location &&
+            win.location.hash &&
+            win.history &&
+            typeof win.history.replaceState === 'function'
+          ) {
+            try {
+              const rawHash = win.location.hash.replace(/^#/, '');
+              const params = new URLSearchParams(rawHash);
+              if (params.has('add-url') || params.has('add_url') || params.has('add')) {
+                params.delete('add-url');
+                params.delete('add_url');
+                params.delete('add');
+                const remaining = params.toString();
+                win.history.replaceState(
+                  win.history.state,
+                  '',
+                  win.location.pathname + win.location.search + (remaining ? `#${remaining}` : '')
+                );
+              }
+            } catch {}
+          }
         } catch (err) {
           setFeedback(err.message, 'danger');
         }

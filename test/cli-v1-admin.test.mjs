@@ -230,6 +230,16 @@ test('/admin/v1 enforces separate adminKey, origin-locked rate-limited open-dash
   });
   assert.equal(rateLimitedOpen.status, 429);
 
+  // 3b. open-dashboard GET forwards add-url parameter into redirect Location hash
+  const getOpenWithAdd = await fetch(
+    `http://127.0.0.1:${port}/admin/v1/open-dashboard?redirect=https%3A%2F%2Fexample.github.io%2Fdocs%2F&add-url=https%3A%2F%2Fexample.github.io%2Fcovpages%2Fmcp`,
+    { redirect: 'manual' }
+  );
+  assert.equal(getOpenWithAdd.status, 302);
+  const redirLocation = getOpenWithAdd.headers.get('location');
+  assert.ok(redirLocation.includes(`#admin-key=${encodeURIComponent(adminKey)}`));
+  assert.ok(redirLocation.includes('&add-url=https%3A%2F%2Fexample.github.io%2Fcovpages%2Fmcp'));
+
   // 4. Valid adminKey accesses /admin/v1/status, /admin/v1/sites, /admin/v1/keys/rotate
   const statusRes = await fetch(`http://127.0.0.1:${port}/admin/v1/status`, {
     headers: { Authorization: `Bearer ${adminKey}` }

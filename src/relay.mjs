@@ -1150,6 +1150,10 @@ export function createRelayServer({
     if (pathname === '/admin/v1/open-dashboard' && req.method === 'GET') {
       const parsedUrl = new URL(req.url, `http://127.0.0.1:${boundPort}`);
       const redirectParam = parsedUrl.searchParams.get('redirect');
+      const addUrlParam =
+        parsedUrl.searchParams.get('add-url') ||
+        parsedUrl.searchParams.get('add_url') ||
+        parsedUrl.searchParams.get('add');
       let targetBaseUrl = `http://127.0.0.1:${boundPort}/dashboard.html`;
       if (redirectParam) {
         try {
@@ -1168,9 +1172,14 @@ export function createRelayServer({
         } catch {}
       }
 
+      let extraHash = '';
+      if (addUrlParam) {
+        extraHash = `&add-url=${encodeURIComponent(addUrlParam)}`;
+      }
+
       const redirectUrl = `${targetBaseUrl}#admin-key=${encodeURIComponent(
         activeStore.getAdminKey()
-      )}&mcp-port=${boundPort}`;
+      )}&mcp-port=${boundPort}${extraHash}`;
 
       res.writeHead(302, {
         Location: redirectUrl,
@@ -1212,6 +1221,13 @@ export function createRelayServer({
         // ignore invalid body on open-dashboard
       }
 
+      const parsedUrl = new URL(req.url, `http://127.0.0.1:${boundPort}`);
+      const addUrlParam =
+        (body && (body.addUrl || body.add_url || body['add-url'])) ||
+        parsedUrl.searchParams.get('add-url') ||
+        parsedUrl.searchParams.get('add_url') ||
+        parsedUrl.searchParams.get('add');
+
       let targetBaseUrl = `http://127.0.0.1:${boundPort}/dashboard.html`;
       if (body && typeof body.pageUrl === 'string' && body.pageUrl) {
         try {
@@ -1231,9 +1247,14 @@ export function createRelayServer({
         }
       }
 
+      let extraHash = '';
+      if (addUrlParam) {
+        extraHash = `&add-url=${encodeURIComponent(addUrlParam)}`;
+      }
+
       const dashboardUrl = `${targetBaseUrl}#admin-key=${encodeURIComponent(
         activeStore.getAdminKey()
-      )}&mcp-port=${boundPort}`;
+      )}&mcp-port=${boundPort}${extraHash}`;
       await openBrowser(dashboardUrl);
 
       // Never return adminKey in the response body!
