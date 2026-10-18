@@ -231,6 +231,16 @@ test('Security Baseline 5: /admin/v1 requires separate adminKey; open-dashboard 
       headers: { Origin: `http://127.0.0.1:${port}` }
     });
     assert.equal(rateLimited.status, 429);
+
+    // Direct browser redirect via GET /admin/v1/open-dashboard?redirect=... sends 302 with #admin-key
+    const redirectRes = await fetch(
+      `http://127.0.0.1:${port}/admin/v1/open-dashboard?redirect=http%3A%2F%2F127.0.0.1%3A${port}%2Fdashboard.html`,
+      { redirect: 'manual' }
+    );
+    assert.equal(redirectRes.status, 302);
+    const locationHeader = redirectRes.headers.get('location');
+    assert.ok(locationHeader.startsWith(`http://127.0.0.1:${port}/dashboard.html#admin-key=`));
+    assert.ok(locationHeader.includes(relay.store.getAdminKey()));
   } finally {
     await relay.stop();
     fs.rmSync(tmpHome, { recursive: true, force: true });

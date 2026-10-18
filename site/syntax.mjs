@@ -61,14 +61,14 @@ export function highlightCode(code, lang = 'bash') {
 function highlightShellLine(line) {
   // If whole line is a comment
   if (line.trim().startsWith('#')) {
-    return `<span class="syn-comment">${escapeHtml(line)}</span>`;
+    return `<span class="token comment syn-comment">${escapeHtml(line)}</span>`;
   }
 
-  // Tokenize line by splitting whitespace and non-whitespace runs
-  const tokenRegex = /(\s+|#[^\n]*|https?:\/\/[^\s]+|--[a-zA-Z0-9_-]+|-[a-zA-Z0-9]|[a-zA-Z0-9_.-]+|[^\s\w])/g;
+  // Tokenize line by splitting whitespace, strings, URLs, flags, and words
+  const tokenRegex =
+    /(\s+|#[^\n]*|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|https?:\/\/[^\s]+|--[a-zA-Z0-9_-]+|-[a-zA-Z0-9]|[a-zA-Z0-9_.-]+|[^\s\w])/g;
   let match;
   let html = '';
-  let commandSeen = false;
 
   while ((match = tokenRegex.exec(line)) !== null) {
     const token = match[0];
@@ -79,28 +79,45 @@ function highlightShellLine(line) {
     }
 
     if (token.startsWith('#')) {
-      html += `<span class="syn-comment">${escapeHtml(token)}</span>`;
+      html += `<span class="token comment syn-comment">${escapeHtml(token)}</span>`;
+      continue;
+    }
+
+    if (
+      (token.startsWith('"') && token.endsWith('"') && token.length >= 2) ||
+      (token.startsWith("'") && token.endsWith("'") && token.length >= 2)
+    ) {
+      html += `<span class="token string syn-string">${escapeHtml(token)}</span>`;
       continue;
     }
 
     if (token.startsWith('http://') || token.startsWith('https://')) {
-      html += `<span class="syn-url">${escapeHtml(token)}</span>`;
+      html += `<span class="token url syn-url">${escapeHtml(token)}</span>`;
       continue;
     }
 
     if (token.startsWith('-')) {
-      html += `<span class="syn-flag">${escapeHtml(token)}</span>`;
+      html += `<span class="token parameter variable syn-flag">${escapeHtml(token)}</span>`;
       continue;
     }
 
     if (COMMANDS.has(token)) {
-      html += `<span class="syn-cmd">${escapeHtml(token)}</span>`;
-      commandSeen = true;
+      html += `<span class="token cli-tool function syn-cmd">${escapeHtml(token)}</span>`;
       continue;
     }
 
     if (SUBCOMMANDS.has(token)) {
-      html += `<span class="syn-subcmd">${escapeHtml(token)}</span>`;
+      html += `<span class="token cli-subcommand property syn-subcmd">${escapeHtml(token)}</span>`;
+      continue;
+    }
+
+    if (/^\d+$/.test(token)) {
+      html += `<span class="token number syn-num">${escapeHtml(token)}</span>`;
+      continue;
+    }
+
+    if (/^[^\s\w]$/.test(token)) {
+      html += `<span class="token punctuation">${escapeHtml(token)}</span>`;
       continue;
     }
 
@@ -114,12 +131,12 @@ function highlightShellLine(line) {
 function highlightJsonLine(line) {
   let out = escapeHtml(line);
   // Keys: "key":
-  out = out.replace(/(&quot;[^&]+&quot;)(\s*:)/g, '<span class="syn-key">$1</span>$2');
+  out = out.replace(/(&quot;[^&]+&quot;)(\s*:)/g, '<span class="token property syn-key">$1</span>$2');
   // Strings: : "val"
-  out = out.replace(/(:?\s*)(&quot;[^&]*&quot;)/g, '$1<span class="syn-string">$2</span>');
+  out = out.replace(/(:?\s*)(&quot;[^&]*&quot;)/g, '$1<span class="token string syn-string">$2</span>');
   // Numbers / Booleans
-  out = out.replace(/\b(true|false|null)\b/g, '<span class="syn-keyword">$1</span>');
-  out = out.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="syn-num">$1</span>');
+  out = out.replace(/\b(true|false|null)\b/g, '<span class="token boolean syn-keyword">$1</span>');
+  out = out.replace(/\b(\d+(\.\d+)?)\b/g, '<span class="token number syn-num">$1</span>');
   return out;
 }
 

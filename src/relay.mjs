@@ -869,14 +869,49 @@ export function createRelayServer({
   }
 
   async function handleAdminRoute(req, res, pathname) {
-    // Rule 5: Unique unauthenticated admin route is POST /admin/v1/open-dashboard
+    const allowedDashboardOrigins = [
+      `http://127.0.0.1:${boundPort}`,
+      `http://localhost:${boundPort}`,
+      'https://yongjhih.github.io',
+      ...dashboardOrigins
+    ];
+
+    // GET /admin/v1/open-dashboard?redirect=... -> 302 redirect directly into the dashboard tab
+    if (pathname === '/admin/v1/open-dashboard' && req.method === 'GET') {
+      const parsedUrl = new URL(req.url, `http://127.0.0.1:${boundPort}`);
+      const redirectParam = parsedUrl.searchParams.get('redirect');
+      let targetBaseUrl = `http://127.0.0.1:${boundPort}/dashboard.html`;
+      if (redirectParam) {
+        try {
+          const normalizedTarget = normalizePageUrl(redirectParam);
+          const parsedTarget = new URL(normalizedTarget);
+          if (
+            allowedDashboardOrigins.includes(parsedTarget.origin) ||
+            parsedTarget.origin.startsWith('http://127.0.0.1:') ||
+            parsedTarget.origin.startsWith('http://localhost:') ||
+            (parsedTarget.origin === 'https://yongjhih.github.io' &&
+              parsedTarget.pathname.startsWith('/ai-proxy/')) ||
+            activeStore.isUrlAllowed(normalizedTarget)
+          ) {
+            targetBaseUrl = normalizedTarget;
+          }
+        } catch {}
+      }
+
+      const redirectUrl = `${targetBaseUrl}#admin-key=${encodeURIComponent(
+        activeStore.getAdminKey()
+      )}&mcp-port=${boundPort}`;
+
+      res.writeHead(302, {
+        Location: redirectUrl,
+        'Cache-Control': 'no-store'
+      });
+      res.end();
+      return;
+    }
+
+    // Rule 5: Unique unauthenticated admin route for external POST is /admin/v1/open-dashboard
     if (pathname === '/admin/v1/open-dashboard' && req.method === 'POST') {
-      const allowedDashboardOrigins = [
-        `http://127.0.0.1:${boundPort}`,
-        `http://localhost:${boundPort}`,
-        'https://yongjhih.github.io',
-        ...dashboardOrigins
-      ];
       const reqOrigin = req.headers.origin;
       if (!reqOrigin || !allowedDashboardOrigins.includes(reqOrigin)) {
         sendJson(req, res, 403, {

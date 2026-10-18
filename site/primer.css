@@ -434,73 +434,89 @@ pre code {
   font-size: inherit;
 }
 
-/* Syntax Highlighting */
-.syn-comment {
-  color: var(--fg-muted);
-  font-style: italic;
-}
+/* Syntax Highlighting (Covpages & Primer Token Palette) */
+.token.comment, .token.prolog, .token.doctype, .token.cdata, .syn-comment { color: #59636e; font-style: italic; }
+.token.punctuation { color: #1f2328; }
+.token.property, .token.tag, .token.boolean, .token.number, .token.constant, .token.symbol, .token.cli-subcommand, .syn-subcmd { color: #0550ae; }
+.token.selector, .token.attr-name, .token.string, .token.char, .token.builtin, .syn-string { color: #0a3069; }
+.token.operator, .token.entity, .token.url, .syn-url { color: #0550ae; text-decoration: underline; text-underline-offset: 2px; }
+.token.atrule, .token.attr-value, .token.keyword, .syn-keyword { color: #cf222e; font-weight: 500; }
+.token.function, .token.class-name, .token.cli-tool, .syn-cmd { color: #6639ba; font-weight: 600; }
+.token.regex, .token.important, .token.variable, .token.parameter, .syn-flag { color: #953800; }
+.syn-key { color: #0550ae; }
+.syn-num { color: #0550ae; }
 
-.syn-cmd {
-  color: var(--accent-fg);
-  font-weight: 600;
-}
+[data-theme="dark"] .token.comment,
+[data-theme="dark"] .syn-comment,
+[data-color-mode="dark"] .token.comment { color: #8b949e; font-style: italic; }
 
-.syn-subcmd {
-  color: #8250df;
-}
+[data-theme="dark"] .token.punctuation,
+[data-color-mode="dark"] .token.punctuation { color: #e6edf3; }
 
+[data-theme="dark"] .token.property,
+[data-theme="dark"] .token.cli-subcommand,
 [data-theme="dark"] .syn-subcmd,
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .syn-subcmd {
-    color: #d2a8ff;
-  }
-}
+[data-color-mode="dark"] .token.property { color: #79c0ff; }
 
-.syn-flag {
-  color: #9a6700;
-}
+[data-theme="dark"] .token.selector,
+[data-theme="dark"] .token.string,
+[data-theme="dark"] .syn-string,
+[data-color-mode="dark"] .token.string { color: #a5d6ff; }
 
-[data-theme="dark"] .syn-flag,
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .syn-flag {
-    color: #f0883e;
-  }
-}
+[data-theme="dark"] .token.url,
+[data-theme="dark"] .syn-url,
+[data-color-mode="dark"] .token.url { color: #79c0ff; }
 
-.syn-url {
-  color: var(--accent-fg);
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.syn-string {
-  color: var(--success-fg);
-}
-
-.syn-key {
-  color: var(--accent-fg);
-}
-
-.syn-keyword {
-  color: #cf222e;
-}
-
+[data-theme="dark"] .token.keyword,
 [data-theme="dark"] .syn-keyword,
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .syn-keyword {
-    color: #ff7b72;
-  }
-}
+[data-color-mode="dark"] .token.keyword { color: #ff7b72; font-weight: 500; }
 
-.syn-num {
-  color: #0550ae;
-}
+[data-theme="dark"] .token.function,
+[data-theme="dark"] .token.cli-tool,
+[data-theme="dark"] .syn-cmd,
+[data-color-mode="dark"] .token.function { color: #d2a8ff; font-weight: 600; }
+
+[data-theme="dark"] .token.variable,
+[data-theme="dark"] .token.parameter,
+[data-theme="dark"] .syn-flag,
+[data-color-mode="dark"] .token.variable { color: #ffa657; }
+
+[data-theme="dark"] .syn-key,
+[data-color-mode="dark"] .syn-key { color: #79c0ff; }
 
 [data-theme="dark"] .syn-num,
+[data-color-mode="dark"] .syn-num { color: #79c0ff; }
+
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .syn-num {
-    color: #79c0ff;
-  }
+  :root:not([data-theme="light"]) .token.comment,
+  :root:not([data-theme="light"]) .syn-comment { color: #8b949e; font-style: italic; }
+
+  :root:not([data-theme="light"]) .token.punctuation { color: #e6edf3; }
+
+  :root:not([data-theme="light"]) .token.property,
+  :root:not([data-theme="light"]) .token.cli-subcommand,
+  :root:not([data-theme="light"]) .syn-subcmd { color: #79c0ff; }
+
+  :root:not([data-theme="light"]) .token.selector,
+  :root:not([data-theme="light"]) .token.string,
+  :root:not([data-theme="light"]) .syn-string { color: #a5d6ff; }
+
+  :root:not([data-theme="light"]) .token.url,
+  :root:not([data-theme="light"]) .syn-url { color: #79c0ff; }
+
+  :root:not([data-theme="light"]) .token.keyword,
+  :root:not([data-theme="light"]) .syn-keyword { color: #ff7b72; font-weight: 500; }
+
+  :root:not([data-theme="light"]) .token.function,
+  :root:not([data-theme="light"]) .token.cli-tool,
+  :root:not([data-theme="light"]) .syn-cmd { color: #d2a8ff; font-weight: 600; }
+
+  :root:not([data-theme="light"]) .token.variable,
+  :root:not([data-theme="light"]) .token.parameter,
+  :root:not([data-theme="light"]) .syn-flag { color: #ffa657; }
+
+  :root:not([data-theme="light"]) .syn-key { color: #79c0ff; }
+  :root:not([data-theme="light"]) .syn-num { color: #79c0ff; }
 }
 
 /* Primer Box & Bordered Ledger Lists (Never nested cards) */
