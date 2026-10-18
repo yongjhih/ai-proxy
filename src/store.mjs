@@ -32,8 +32,25 @@ export function validateAllowToolSpec(spec) {
   };
 }
 
+export const DEFAULT_ALLOWED_TOOLS = [
+  'mcp__ai-proxy__about',
+  'mcp__ai-proxy__spec',
+  'mcp__ai-proxy__knowledge',
+  'mcp__ai-proxy__cli_skills',
+  'mcp__ai-proxy__site_tour',
+  'mcp__ai-proxy__site_tools',
+  'mcp__ai-proxy__sites'
+];
+
 export function deriveSiteSlug(normalizedUrl) {
   const parsed = new URL(normalizedUrl);
+  if (
+    (parsed.hostname === 'yongjhih.github.io' && parsed.pathname.startsWith('/ai-proxy')) ||
+    ((parsed.hostname === '127.0.0.1' || parsed.hostname === 'localhost') &&
+      (parsed.pathname === '/mcp' || parsed.pathname === '/mcp.html'))
+  ) {
+    return 'ai-proxy';
+  }
   const raw = `${parsed.hostname}${parsed.pathname}`
     .replace(/\/mcp(?:\.html)?$/i, '')
     .replace(/[^a-zA-Z0-9]+/g, '-')
@@ -79,7 +96,8 @@ export function createStore({ configDir = undefined } = {}) {
       enabled: false,
       expiresAt: null
     },
-    allowedTools: []
+    allowedTools: [],
+    allowedToolsExplicit: false
   };
 
   function load() {
@@ -88,6 +106,7 @@ export function createStore({ configDir = undefined } = {}) {
         const raw = fs.readFileSync(configFile, 'utf8');
         const parsed = JSON.parse(raw);
         if (parsed && typeof parsed === 'object') {
+          const hasStoredAllowedTools = Array.isArray(parsed.allowedTools) && parsed.allowedTools.length > 0;
           data = {
             version: 1,
             adminKey:
@@ -107,7 +126,8 @@ export function createStore({ configDir = undefined } = {}) {
                         : null
                   }
                 : { enabled: false, expiresAt: null },
-            allowedTools: Array.isArray(parsed.allowedTools) ? parsed.allowedTools : []
+            allowedTools: Array.isArray(parsed.allowedTools) ? parsed.allowedTools : [],
+            allowedToolsExplicit: hasStoredAllowedTools
           };
         }
       } else {
@@ -438,12 +458,16 @@ export function createStore({ configDir = undefined } = {}) {
   function setAllowedTools(specs = []) {
     const validated = specs.map((s) => validateAllowToolSpec(s).full);
     data.allowedTools = Array.from(new Set(validated));
+    data.allowedToolsExplicit = true;
     save();
     return [...data.allowedTools];
   }
 
   function getAllowedTools() {
-    return [...data.allowedTools];
+    if (data.allowedToolsExplicit) {
+      return [...data.allowedTools];
+    }
+    return data.allowedTools.length > 0 ? [...data.allowedTools] : [...DEFAULT_ALLOWED_TOOLS];
   }
 
   function getWarnings() {

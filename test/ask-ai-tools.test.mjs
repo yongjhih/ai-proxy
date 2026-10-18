@@ -1,8 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
-import { generateDefaultAssistantReply } from '../src/relay.mjs';
+import { generateDefaultAssistantReply, createRelayServer } from '../src/relay.mjs';
+import { createStore } from '../src/store.mjs';
 import { formatAssistantMarkdown, initAskAiDrawer } from '../site/ask-ai.mjs';
 
 const ROOT_DIR = path.resolve(import.meta.dirname, '..');
@@ -44,10 +46,36 @@ test('generateDefaultAssistantReply recognizes intents and produces CTA action l
   const specReply = generateDefaultAssistantReply('查看規格 spec');
   assert.ok(specReply.includes('doc.html?d=spec'));
 
-  // 8. Dashboard
+  // 8. Knowledge
+  const knowledgeReply = generateDefaultAssistantReply('查看 ai-proxy 知識與架構 knowledge');
+  assert.ok(knowledgeReply.includes('知識庫概覽'));
+  assert.ok(knowledgeReply.includes('doc.html?d=spec'));
+  assert.ok(knowledgeReply.includes('mcp.html?tool=knowledge'));
+
+  // 9. CLI & Skills
+  const skillsReply = generateDefaultAssistantReply('如何安裝 CLI 與 agent skills');
+  assert.ok(skillsReply.includes('npx ai-proxy serve'));
+  assert.ok(skillsReply.includes('claude mcp add'));
+  assert.ok(skillsReply.includes('skills/mcp-pages/SKILL.md'));
+  assert.ok(skillsReply.includes('mcp.html?tool=cli_skills'));
+
+  // 10. Site Tour
+  const tourReply = generateDefaultAssistantReply('請給我網站導覽 tour');
+  assert.ok(tourReply.includes('網站導覽地圖'));
+  assert.ok(tourReply.includes('index.html'));
+  assert.ok(tourReply.includes('mcp.html?tool=site_tour'));
+
+  // 11. Dashboard
   const dashReply = generateDefaultAssistantReply('打開 dashboard 控制台');
   assert.ok(dashReply.includes('dashboard.html'));
   assert.ok(dashReply.includes('#details-allow-prefix'));
+
+  // 12. Fallback includes permitted read-only tools
+  const fallbackReply = generateDefaultAssistantReply('隨意問話', [
+    { fullSpec: 'mcp__ai-proxy__about' },
+    { fullSpec: 'mcp__ai-proxy__knowledge' }
+  ]);
+  assert.ok(fallbackReply.includes('Permitted read-only tools: [mcp__ai-proxy__about, mcp__ai-proxy__knowledge].'));
 });
 
 test('formatAssistantMarkdown renders interactive CTA buttons, jump anchors, code, and links', () => {
@@ -81,6 +109,9 @@ test('self-mcp.mjs registers all requested management tools and marks mutating t
     'sites',
     'site_tools',
     'spec',
+    'knowledge',
+    'cli_skills',
+    'site_tour',
     'add_mcp',
     'add_site',
     'remove_mcp',
@@ -173,4 +204,42 @@ test('initAskAiDrawer restores message history and open state from sessionStorag
   assert.equal(messagesEl.children[0].textContent, 'What is MCP Pages?');
   assert.ok(messagesEl.children[1].innerHTML.includes('MCP Pages connects static sites to AI.'));
 });
+
+test('/v1/chat/completions fallback provides default permitted read-only tools instead of none', async (t) => {
+  const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ai-proxy-v1-default-'));
+  const store = createStore({ configDir: tmpHome });
+  const relay = createRelayServer({
+    store,
+    port: 0,
+    openBrowser: async () => {}
+  });
+  const { port } = await relay.start();
+  t.after(async () => {
+    await relay.stop();
+    fs.rmSync(tmpHome, { recursive: true, force: true });
+  });
+
+  const res = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+    method: 'POST',
+    headers: {
+      Origin: 'http://127.0.0.1',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      messages: [{ role: 'user', content: 'Random unhandled prompt' }]
+    })
+  });
+  assert.equal(res.status, 200);
+  const data = await res.json();
+  assert.ok(data.ai_proxy.permittedReadOnlyTools.length > 0);
+  assert.ok(data.ai_proxy.permittedReadOnlyTools.includes('mcp__ai-proxy__about'));
+  assert.ok(data.ai_proxy.permittedReadOnlyTools.includes('mcp__ai-proxy__knowledge'));
+  assert.ok(data.ai_proxy.permittedReadOnlyTools.includes('mcp__ai-proxy__cli_skills'));
+  assert.ok(data.ai_proxy.permittedReadOnlyTools.includes('mcp__ai-proxy__site_tour'));
+
+  const content = data.choices[0].message.content;
+  assert.ok(!content.includes('Permitted read-only tools: [none]'));
+  assert.ok(content.includes('mcp__ai-proxy__knowledge'));
+});
+
 

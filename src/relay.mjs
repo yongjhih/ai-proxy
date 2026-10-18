@@ -142,7 +142,31 @@ export function generateDefaultAssistantReply(promptText, permittedTools = []) {
     ].join('\n');
   }
 
-  // 5. Quickstart / Getting Started
+  // 5. CLI & Skills intent
+  if (/(?:skills?|技能|cli|claude\s*code|安裝指令|install\s*guide)/i.test(text)) {
+    return [
+      `ai-proxy CLI 與 Agent Skills 安裝與配置指南：`,
+      '',
+      `**1. CLI 執行與安裝：**`,
+      '```bash',
+      'npx ai-proxy serve --port 8788',
+      'npm install -g @ai-proxy/cli',
+      '```',
+      '',
+      `**2. 連接 Claude Code：**`,
+      '```bash',
+      'claude mcp add --transport http ai-proxy http://127.0.0.1:8788/mcp?url=https://yongjhih.github.io/ai-proxy/mcp',
+      '```',
+      '',
+      `**3. AI Agent Skills (skills/mcp-pages/SKILL.md)：**`,
+      `支援 Antigravity、Cursor、Windsurf，指導 Agent 為靜態網站快速建立 WebMCP 頁面與 vendor 模組。`,
+      '',
+      `[🚀 前往快速上手章節 (Quickstart)](#quickstart)`,
+      `[🛠️ 透過 WebMCP 查詢 cli_skills 工具](mcp.html?tool=cli_skills)`
+    ].join('\n');
+  }
+
+  // 6. Quickstart / Getting Started
   if (/(?:quickstart|快速上手|開始|入門|install|安裝)/i.test(text)) {
     return [
       `歡迎使用 MCP Pages！以下為快速上手指南：`,
@@ -187,11 +211,44 @@ export function generateDefaultAssistantReply(promptText, permittedTools = []) {
     ].join('\n');
   }
 
-  // 8. Tools
+  // 8. Knowledge intent
+  if (/(?:knowledge|知識|架構|architecture|faq|常見問題)/i.test(text)) {
+    return [
+      `MCP Pages & ai-proxy 知識庫概覽：`,
+      '',
+      `ai-proxy 是零依賴的輕量級本機中繼器，為靜態網站提供 WebMCP 與 AI 雙向通道。`,
+      '',
+      `主要知識範疇：`,
+      `- **系統架構 (Architecture)**：本機 Relay (8788)、Long Polling 分頁通道 (/tab/v1/poll)、Claude Code MCP 端點 (/mcp)。`,
+      `- **七大安全基準 (7 Security Baselines)**：Fragment 金鑰隔離、URL Prefix 白名單、封鎖 /mcp Origin、/v1 僅限具名唯讀工具、獨立 Admin Key、防呆標註、純對話萬用字元。`,
+      `- **規範與協定 (Spec & Protocol)**：WebMCP 標準 (window.navigator.modelContext) 與 JSON-RPC 2.0。`,
+      '',
+      `[📄 查看完整規範 (Spec)](doc.html?d=spec)`,
+      `[🔒 查看安全性規範 (Security)](doc.html?d=security)`,
+      `[🛠️ 透過 WebMCP 查詢 knowledge 工具](mcp.html?tool=knowledge)`
+    ].join('\n');
+  }
+
+  // 9. Site Tour & Navigation intent
+  if (/(?:tour|導覽|地圖|sitemap|站點導覽|頁面導覽)/i.test(text)) {
+    return [
+      `ai-proxy 網站導覽地圖：`,
+      '',
+      `- [英文首頁 (index.html)](index.html) · [快速上手](#quickstart) · [安全性](#security)`,
+      `- [繁體中文首頁 (zh-TW.html)](zh-TW.html) · [快速上手](#quickstart)`,
+      `- [📄 規格文件 (doc.html?d=spec)](doc.html?d=spec) · [🔒 安全模型 (doc.html?d=security)](doc.html?d=security)`,
+      `- [📊 本機控制台 (dashboard.html)](dashboard.html) · [📋 MCP 站點列表](#admin-dashboard-authenticated)`,
+      `- [🛠️ WebMCP 工具目錄 (mcp.html)](mcp.html)`,
+      '',
+      `[🛠️ 透過 WebMCP 查詢 site_tour 工具](mcp.html?tool=site_tour)`
+    ].join('\n');
+  }
+
+  // 11. Tools
   if (/(?:tools|工具|webmcp)/i.test(text)) {
     const permittedSpec = permittedTools.map((t) => t.fullSpec).join(', ') || '無';
     return [
-      `MCP 頁面可向 AI 暴露多種 WebMCP 工具（如 \`about\`, \`sites\`, \`add_mcp\`, \`remove_mcp\`, \`allow_origin\` 等）：`,
+      `MCP 頁面可向 AI 暴露多種 WebMCP 工具（如 \`about\`, \`spec\`, \`knowledge\`, \`cli_skills\`, \`site_tour\`, \`sites\`, \`add_mcp\` 等）：`,
       '',
       `[🛠️ 查看 MCP 工具目錄 (mcp.html)](mcp.html)`,
       '',
@@ -199,7 +256,7 @@ export function generateDefaultAssistantReply(promptText, permittedTools = []) {
     ].join('\n');
   }
 
-  // 9. Dashboard navigation
+  // 12. Dashboard navigation
   if (/(?:dashboard|儀表板|控制台|打開|展開)/i.test(text)) {
     return [
       `您可以在 Dashboard 中管理 MCP 站點、URL Allowlist 與 Origin 授權：`,
@@ -932,7 +989,14 @@ export function createRelayServer({
 
     for (const spec of parsedSpecs) {
       for (const site of allSites) {
-        if (site.name !== spec.server) continue;
+        const isMatch =
+          site.name === spec.server ||
+          (spec.server === 'ai-proxy' &&
+            (site.name === 'ai-proxy-self' ||
+              site.name === 'self-mcp' ||
+              site.name === 'yongjhih-github-io-ai-proxy' ||
+              (typeof site.url === 'string' && site.url.includes('/ai-proxy'))));
+        if (!isMatch) continue;
         const tool = (site.tools || []).find((t) => t.name === spec.tool);
         if (tool && tool.annotations && tool.annotations.readOnlyHint === true) {
           permitted.push({
@@ -941,6 +1005,36 @@ export function createRelayServer({
             tool: tool.name,
             pageUrl: site.url,
             definition: tool
+          });
+        }
+      }
+    }
+
+    // If no tab has connected yet to populate site.tools on the relay, provide default ai-proxy read-only tools
+    // so the assistant has access to them when ai-proxy tools are allowed
+    if (permitted.length === 0 && allowedSpecs.some((s) => s.startsWith('mcp__ai-proxy__'))) {
+      const defaultSelfTools = [
+        { name: 'about', title: 'About MCP Pages & ai-proxy' },
+        { name: 'spec', title: 'Read Normative Specification' },
+        { name: 'knowledge', title: 'Query ai-proxy Knowledge' },
+        { name: 'cli_skills', title: 'CLI & Skills Installation Guide' },
+        { name: 'site_tour', title: 'ai-proxy Site Tour & Navigation' },
+        { name: 'sites', title: 'List Registered Sites' },
+        { name: 'site_tools', title: 'Inspect Site Tools' }
+      ];
+      for (const spec of parsedSpecs) {
+        if (spec.server !== 'ai-proxy') continue;
+        const found = defaultSelfTools.find((t) => t.name === spec.tool);
+        if (found) {
+          permitted.push({
+            fullSpec: spec.full,
+            server: 'ai-proxy',
+            tool: found.name,
+            pageUrl: `http://127.0.0.1:${boundPort}/mcp`,
+            definition: {
+              name: found.name,
+              annotations: { title: found.title, readOnlyHint: true }
+            }
           });
         }
       }
