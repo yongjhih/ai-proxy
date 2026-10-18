@@ -376,8 +376,8 @@ export async function mountAdminDashboard({
               );
               return `
           <tr data-site-url="${escapeHtml(s.url)}" id="site-row-${encodeURIComponent(s.url).replace(/[^a-zA-Z0-9_-]/g, '_')}">
-            <td><code>${escapeHtml(s.name)}</code></td>
-            <td><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.url)}</a></td>
+            <td class="cell-name"><span class="mono" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</span></td>
+            <td class="cell-url"><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.url)}</a></td>
             <td>
               <span class="status-item ${s.connected ? 'is-on' : 'is-off'}"${
                 s.connected && s.sessionId ? ` title="Session ${escapeHtml(s.sessionId)}"` : ''
@@ -395,7 +395,7 @@ export async function mountAdminDashboard({
                 }
               </div>
             </td>
-            <td><code>${Array.isArray(s.tools) ? s.tools.length : 0}</code></td>
+            <td class="cell-num">${Array.isArray(s.tools) ? s.tools.length : 0}</td>
             <td>
               <div class="form-row">
                 <button type="button" class="btn btn-sm btn-toggle-site-mode" data-url="${escapeHtml(s.url)}" data-write="${s.write !== false ? 'false' : 'true'}">${s.write !== false ? 'Set Read-Only' : 'Allow Write'}</button>
@@ -494,7 +494,7 @@ export async function mountAdminDashboard({
                   <th>Page URL</th>
                   <th>Tab Status</th>
                   <th>Mode</th>
-                  <th>Tools</th>
+                  <th class="cell-num">Tools</th>
                   <th>Actions</th>
                 </tr>
               </thead>
