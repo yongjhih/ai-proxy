@@ -320,6 +320,11 @@ test(
         'Chat Completions Allowed Origins is folded inside details'
       );
 
+      const isCheckboxChecked = await page.evalJs(
+        `Boolean(document.getElementById('checkbox-add-site-write')?.checked)`
+      );
+      assert.equal(isCheckboxChecked, true, 'Write checkbox must be checked by default');
+
       // Click Add Site (using directory URL to test automatic /mcp endpoint, prefix, and origin allowance)
       await page.evalJs(`
         (() => {
@@ -348,6 +353,17 @@ test(
         relay.store.getSnapshot().allowedOrigins.includes('https://example.github.io'),
         'Site origin automatically allowed on /v1'
       );
+      const demoSite = relay.store.getSite('https://example.github.io/demo/mcp');
+      assert.equal(demoSite.write, true, 'MCP site added via dashboard form must have write: true by default');
+
+      // Toggle mode button: switch to read-only
+      await page.evalJs(`
+        const btn = document.querySelector('tr[data-site-url="https://example.github.io/demo/mcp"] .btn-toggle-site-mode');
+        if (btn) btn.click();
+      `);
+      await new Promise((r) => setTimeout(r, 200));
+      const demoSiteAfterToggle = relay.store.getSite('https://example.github.io/demo/mcp');
+      assert.equal(demoSiteAfterToggle.write, false, 'Site mode should be toggled to read-only');
 
       // Click Rotate single site key
       await page.evalJs(`document.querySelector('.btn-rotate-site').click()`);
@@ -475,7 +491,7 @@ test(
 
       // Call 3: site_tools
       const siteToolsOut = await callRelayTool('site_tools', {});
-      assert.equal(siteToolsOut.tools.length, 14);
+      assert.equal(siteToolsOut.tools.length, 15);
 
       // Call 4: spec
       const specOut = await callRelayTool('spec', { topic: 'security', lang: 'zh-TW' });
@@ -491,6 +507,7 @@ test(
       });
       assert.equal(addSiteOut.ok, true);
       assert.equal(addSiteOut.site.name, 'added-via-tool');
+      assert.equal(addSiteOut.site.write, true);
 
       // Call 6: remove_site
       const removeSiteOut = await callRelayTool('remove_site', {
@@ -509,6 +526,7 @@ test(
       });
       assert.equal(addMcpOut.ok, true);
       assert.equal(addMcpOut.site.name, 'added-mcp');
+      assert.equal(addMcpOut.site.write, true);
 
       // Call 8: remove_mcp (alias of remove_site)
       const removeMcpOut = await callRelayTool('remove_mcp', {
@@ -543,6 +561,14 @@ test(
       });
       assert.equal(denyPrefixOut.ok, true);
       assert.ok(!denyPrefixOut.allowlist.includes('https://custom-prefix.example.com/'));
+
+      // Call 13: set_site_permission
+      const setPermOut = await callRelayTool('set_site_permission', {
+        url: selfMcpUrl,
+        write: false
+      });
+      assert.equal(setPermOut.ok, true);
+      assert.equal(setPermOut.site.write, false);
 
       // Test Ask AI drawer in dashboard: submit query, render CTA button, and click CTA to add site
       await page.evalJs(`

@@ -281,9 +281,15 @@ export async function mountAdminDashboard({
                 ${s.connected ? `Connected (${escapeHtml(s.sessionId || '')})` : 'Idle / Disconnected'}
               </span>
             </td>
+            <td>
+              <span class="badge ${s.write !== false ? 'badge-success' : 'badge-readonly'}" title="${s.write !== false ? 'Read/Write allowed' : 'Read-only mode'}">
+                ${s.write !== false ? 'Read/Write' : 'Read-Only'}
+              </span>
+            </td>
             <td><code>${Array.isArray(s.tools) ? s.tools.length : 0}</code></td>
             <td>
               <div class="form-row">
+                <button type="button" class="btn btn-sm btn-toggle-site-mode" data-url="${escapeHtml(s.url)}" data-write="${s.write !== false ? 'false' : 'true'}">${s.write !== false ? 'Set Read-Only' : 'Allow Write'}</button>
                 <button type="button" class="btn btn-sm btn-rotate-site" data-url="${escapeHtml(s.url)}">Rotate Key</button>
                 <button type="button" class="btn btn-sm btn-danger btn-remove-site" data-url="${escapeHtml(s.url)}">Remove</button>
               </div>
@@ -292,7 +298,7 @@ export async function mountAdminDashboard({
         `
             )
             .join('')
-        : `<tr><td colspan="5">No MCP sites registered yet. Add a site below to allow its prefix and register it in Claude Code.</td></tr>`;
+        : `<tr><td colspan="6">No MCP sites registered yet. Add a site below to allow its prefix and register it in Claude Code.</td></tr>`;
 
     const allowlistRows =
       status.allowlist && status.allowlist.length > 0
@@ -339,13 +345,17 @@ export async function mountAdminDashboard({
             <span class="badge badge-success">Port ${escapeHtml(status.port)} · Authenticated</span>
           </div>
           <div class="primer-box-row">
-            <form id="form-add-site" class="form-row">
-              <input type="url" name="url" placeholder="https://example.github.io/example/" required style="flex:1;" />
-              <input type="text" name="name" placeholder="Optional name (e.g. docs-site)" />
+            <form id="form-add-site" class="form-row" style="flex-wrap:wrap;align-items:center;gap:0.5rem;">
+              <input type="url" name="url" placeholder="https://example.github.io/example/" required style="flex:1;min-width:240px;" />
+              <input type="text" name="name" placeholder="Optional name (e.g. docs-site)" style="min-width:180px;" />
+              <label style="display:inline-flex;align-items:center;gap:0.35rem;font-size:0.875rem;cursor:pointer;user-select:none;">
+                <input type="checkbox" name="write" value="true" checked id="checkbox-add-site-write" />
+                <span>Allow Write (讀寫支援)</span>
+              </label>
               <button type="submit" class="btn btn-primary" id="btn-add-site">Add Site</button>
             </form>
             <div style="font-size:0.75rem;color:var(--fg-muted);margin-top:0.375rem;">
-              支援直接填寫站點路徑（如 <code>https://example.github.io/example/</code>），自動尋找預設 <code>/mcp</code> 或 <code>/mcp.html</code> 並自動加入 URL Prefix 與 Origin 授權。
+              支援直接填寫站點路徑（如 <code>https://example.github.io/example/</code>），自動尋找預設 <code>/mcp</code> 或 <code>/mcp.html</code> 並自動加入 URL Prefix 與 Origin 授權。預設開啟讀寫支援（可取消勾選設為唯讀）。
             </div>
           </div>
           <div class="data-table-wrap" style="margin:0;border:none;border-top:1px solid var(--border-default);border-radius:0;">
@@ -355,6 +365,7 @@ export async function mountAdminDashboard({
                   <th>Name</th>
                   <th>Page URL</th>
                   <th>Tab Status</th>
+                  <th>Mode</th>
                   <th>Tools</th>
                   <th>Actions</th>
                 </tr>
@@ -432,14 +443,38 @@ export async function mountAdminDashboard({
         const fd = new FormData(addSiteForm);
         const inputUrl = String(fd.get('url') || '').trim();
         const name = String(fd.get('name') || '').trim() || undefined;
+        const writeCheckbox = addSiteForm.querySelector('#checkbox-add-site-write');
+        const write = writeCheckbox ? writeCheckbox.checked : true;
         try {
           const fetchFn = win && typeof win.fetch === 'function' ? win.fetch.bind(win) : globalThis.fetch;
           const targetUrl = await resolveMcpEndpoint(inputUrl, { fetchFn });
           const res = await adminFetch('/admin/v1/sites', {
             method: 'POST',
-            body: JSON.stringify({ url: targetUrl, name })
+            body: JSON.stringify({ url: targetUrl, name, write })
           });
-          setFeedback(`Added MCP site: ${res.site.url} (automatically allowed prefix & origin)`);
+          setFeedback(
+            `Added MCP site: ${res.site.url} (${
+              res.site.write !== false ? 'Read/Write' : 'Read-Only'
+            }, automatically allowed prefix & origin)`
+          );
+        } catch (err) {
+          setFeedback(err.message, 'danger');
+        }
+        await refreshDashboard();
+      });
+    }
+
+    // Wire Toggle Site Mode (Read/Write vs Read-Only)
+    for (const btn of container.querySelectorAll('.btn-toggle-site-mode')) {
+      btn.addEventListener('click', async () => {
+        const url = btn.getAttribute('data-url');
+        const nextWrite = btn.getAttribute('data-write') === 'true';
+        try {
+          await adminFetch('/admin/v1/sites/permission', {
+            method: 'POST',
+            body: JSON.stringify({ url, write: nextWrite })
+          });
+          setFeedback(`Updated site mode for ${url} to ${nextWrite ? 'Read/Write' : 'Read-Only'}`);
         } catch (err) {
           setFeedback(err.message, 'danger');
         }

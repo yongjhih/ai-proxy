@@ -42,10 +42,29 @@ export async function initSelfMcpPage({
     return data;
   }
 
-  async function executeAddSite({ url, name }) {
+  async function executeAddSite({ url, name, write = true }) {
     const res = await fetchAdminJson('/admin/v1/sites', {
       method: 'POST',
-      body: JSON.stringify({ url, name })
+      body: JSON.stringify({ url, name, write: write !== false })
+    });
+    if (adminCtrl) {
+      await adminCtrl.refreshDashboard();
+    }
+    if (win && typeof win.dispatchEvent === 'function') {
+      try {
+        win.dispatchEvent(new win.CustomEvent('ai-proxy-refresh-dashboard'));
+      } catch {}
+    }
+    return {
+      ok: true,
+      site: res.site
+    };
+  }
+
+  async function executeSetSitePermission({ url, write }) {
+    const res = await fetchAdminJson('/admin/v1/sites/permission', {
+      method: 'POST',
+      body: JSON.stringify({ url, write: Boolean(write) })
     });
     if (adminCtrl) {
       await adminCtrl.refreshDashboard();
@@ -327,6 +346,11 @@ export async function initSelfMcpPage({
           name: {
             type: 'string',
             description: 'Optional short server slug'
+          },
+          write: {
+            type: 'boolean',
+            description: 'Allow read/write access (default: true). Set false for read-only mode.',
+            default: true
           }
         },
         required: ['url'],
@@ -355,6 +379,11 @@ export async function initSelfMcpPage({
           name: {
             type: 'string',
             description: 'Optional short server slug'
+          },
+          write: {
+            type: 'boolean',
+            description: 'Allow read/write access (default: true). Set false for read-only mode.',
+            default: true
           }
         },
         required: ['url'],
@@ -368,6 +397,34 @@ export async function initSelfMcpPage({
         openWorldHint: true
       },
       execute: executeAddSite
+    },
+    {
+      name: 'set_site_permission',
+      description:
+        'Update an MCP site access permission between read/write mode and read-only mode. NON-READ-ONLY TOOL: Only call this tool when the human user has explicitly requested to change site permissions.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          url: {
+            type: 'string',
+            description: 'Site URL to update'
+          },
+          write: {
+            type: 'boolean',
+            description: 'True to enable read/write mode, false for read-only mode'
+          }
+        },
+        required: ['url', 'write'],
+        additionalProperties: false
+      },
+      annotations: {
+        title: 'Set Site Permission',
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      },
+      execute: executeSetSitePermission
     },
     {
       name: 'remove_mcp',

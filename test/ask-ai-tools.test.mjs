@@ -90,7 +90,8 @@ test('self-mcp.mjs registers all requested management tools and marks mutating t
     'deny_origin',
     'remove_allow_origin',
     'allow_prefix',
-    'deny_prefix'
+    'deny_prefix',
+    'set_site_permission'
   ];
 
   for (const name of requiredTools) {

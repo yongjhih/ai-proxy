@@ -61,6 +61,10 @@ function parseFlags(args) {
       flags.admin = true;
     } else if (arg === '--login') {
       flags.login = true;
+    } else if (arg === '--read-only' || arg === '--readonly') {
+      flags.readOnly = true;
+    } else if (arg === '--write') {
+      flags.write = true;
     } else if (arg === '--help' || arg === '-h') {
       flags.help = true;
     } else {
@@ -117,7 +121,7 @@ export async function runCli(
 Commands:
   serve [--port 8788] [--allow-tool mcp__<server>__<tool>]
   mcp --url <page_url> [--port 8788]
-  add <page_url> [--name <slug>] [--port 8788]
+  add <page_url> [--name <slug>] [--read-only] [--port 8788]
   remove <page_url_or_name>
   allow <url_prefix>
   allow-origin <origin|*> [--ttl <seconds>]
@@ -258,19 +262,26 @@ Commands:
       try {
         targetUrl = await resolveMcpEndpoint(urlArg);
       } catch {}
-      const site = store.addSite({ url: targetUrl, name: flags.name });
+      const site = store.addSite({
+        url: targetUrl,
+        name: flags.name,
+        write: !flags.readOnly
+      });
       let mcpEndpoint = `http://${host}:${port}/mcp?url=${encodeURIComponent(site.url)}`;
       try {
         mcpEndpoint = await registerSiteInClaude(site, port, env, host);
       } catch (err) {
         stderr.write(`Warning: claude mcp add failed (${err.message}); site still saved locally.\n`);
       }
-      stderr.write(`Added site "${site.name}" -> ${site.url}\n`);
+      stderr.write(
+        `Added site "${site.name}" -> ${site.url} (${site.write ? 'read/write' : 'read-only'})\n`
+      );
       stdout.write(
         `${JSON.stringify({
           ok: true,
           name: site.name,
           url: site.url,
+          write: site.write,
           mcpEndpoint
         })}\n`
       );
