@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { createStore, validateAllowToolSpec, getEquivalentPageUrls } from './store.mjs';
 import { createRelayServer, defaultOpenBrowser } from './relay.mjs';
 import { runDockerWrapper, runDevcontainerSubcommand } from './docker.mjs';
+import { createLlmBackend } from './llm.mjs';
 import { normalizePageUrl, resolveMcpEndpoint } from '../web/url.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -69,6 +70,16 @@ function parseFlags(args) {
       flags.noOrigin = true;
     } else if (arg === '--no-prefix') {
       flags.noPrefix = true;
+    } else if (arg === '--upstream' || arg === '--upstream-url') {
+      flags.upstream = args[++i];
+    } else if (arg === '--model' || arg === '-m') {
+      flags.model = args[++i];
+    } else if (arg === '--gemini-key') {
+      flags.geminiKey = args[++i];
+    } else if (arg === '--anthropic-key') {
+      flags.anthropicKey = args[++i];
+    } else if (arg === '--openai-key') {
+      flags.openaiKey = args[++i];
     } else if (arg === '--help' || arg === '-h') {
       flags.help = true;
     } else {
@@ -123,7 +134,7 @@ export async function runCli(
       `Usage: ai-proxy <command> [options]
 
 Commands:
-  serve [--port 8788] [--allow-tool mcp__<server>__<tool>]
+  serve [--port 8788] [--allow-tool mcp__<server>__<tool>] [--upstream <url>] [--model <name>]
   mcp --url <page_url> [--port 8788]
   add <page_url> [--name <slug>] [--read-only] [--no-origin] [--no-prefix] [--port 8788]
   remove <page_url_or_name>
@@ -169,16 +180,29 @@ Commands:
         }
       }
 
+      const chatBackend = createLlmBackend({
+        upstreamUrl: flags.upstream,
+        geminiKey: flags.geminiKey,
+        anthropicKey: flags.anthropicKey,
+        openaiKey: flags.openaiKey,
+        defaultModel: flags.model,
+        env
+      });
+
       const relay = createRelayServer({
         store,
         host,
         port,
         openBrowser,
+        chatBackend: chatBackend || undefined,
         onSiteAdded: (site, p) => registerSiteInClaude(site, p, env),
         onSiteRemoved: (site) => removeSiteFromClaude(site.name, env)
       });
       const bound = await relay.start();
       printWarningsToStderr(store, stderr);
+      if (chatBackend) {
+        stderr.write(`LLM upstream active: ${chatBackend.provider} (model: ${chatBackend.model})\n`);
+      }
       stderr.write(`ai-proxy listening on http://${bound.host}:${bound.port}\n`);
       stdout.write(`${JSON.stringify({ ok: true, host: bound.host, port: bound.port })}\n`);
       return 0;
