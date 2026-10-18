@@ -42,6 +42,122 @@ export async function initSelfMcpPage({
     return data;
   }
 
+  async function executeAddSite({ url, name }) {
+    const res = await fetchAdminJson('/admin/v1/sites', {
+      method: 'POST',
+      body: JSON.stringify({ url, name })
+    });
+    if (adminCtrl) {
+      await adminCtrl.refreshDashboard();
+    }
+    if (win && typeof win.dispatchEvent === 'function') {
+      try {
+        win.dispatchEvent(new win.CustomEvent('ai-proxy-refresh-dashboard'));
+      } catch {}
+    }
+    return {
+      ok: true,
+      site: res.site
+    };
+  }
+
+  async function executeRemoveSite({ url }) {
+    const res = await fetchAdminJson('/admin/v1/sites', {
+      method: 'DELETE',
+      body: JSON.stringify({ url })
+    });
+    if (adminCtrl) {
+      await adminCtrl.refreshDashboard();
+    }
+    if (win && typeof win.dispatchEvent === 'function') {
+      try {
+        win.dispatchEvent(new win.CustomEvent('ai-proxy-refresh-dashboard'));
+      } catch {}
+    }
+    return {
+      ok: true,
+      removed: res.removed
+    };
+  }
+
+  async function executeAllowOrigin({ origin, ttlSeconds }) {
+    const res = await fetchAdminJson('/admin/v1/origins', {
+      method: 'POST',
+      body: JSON.stringify({ origin, action: 'allow', ttlSeconds })
+    });
+    if (adminCtrl) {
+      await adminCtrl.refreshDashboard();
+    }
+    if (win && typeof win.dispatchEvent === 'function') {
+      try {
+        win.dispatchEvent(new win.CustomEvent('ai-proxy-refresh-dashboard'));
+      } catch {}
+    }
+    return {
+      ok: true,
+      allowedOrigins: res.allowedOrigins,
+      openOriginMode: res.openOriginMode,
+      warnings: res.warnings
+    };
+  }
+
+  async function executeDenyOrigin({ origin }) {
+    const res = await fetchAdminJson('/admin/v1/origins', {
+      method: 'POST',
+      body: JSON.stringify({ origin, action: 'deny' })
+    });
+    if (adminCtrl) {
+      await adminCtrl.refreshDashboard();
+    }
+    if (win && typeof win.dispatchEvent === 'function') {
+      try {
+        win.dispatchEvent(new win.CustomEvent('ai-proxy-refresh-dashboard'));
+      } catch {}
+    }
+    return {
+      ok: true,
+      allowedOrigins: res.allowedOrigins
+    };
+  }
+
+  async function executeAllowPrefix({ prefix }) {
+    const res = await fetchAdminJson('/admin/v1/allow', {
+      method: 'POST',
+      body: JSON.stringify({ prefix })
+    });
+    if (adminCtrl) {
+      await adminCtrl.refreshDashboard();
+    }
+    if (win && typeof win.dispatchEvent === 'function') {
+      try {
+        win.dispatchEvent(new win.CustomEvent('ai-proxy-refresh-dashboard'));
+      } catch {}
+    }
+    return {
+      ok: true,
+      allowlist: res.allowlist
+    };
+  }
+
+  async function executeDenyPrefix({ prefix }) {
+    const res = await fetchAdminJson('/admin/v1/deny', {
+      method: 'POST',
+      body: JSON.stringify({ prefix })
+    });
+    if (adminCtrl) {
+      await adminCtrl.refreshDashboard();
+    }
+    if (win && typeof win.dispatchEvent === 'function') {
+      try {
+        win.dispatchEvent(new win.CustomEvent('ai-proxy-refresh-dashboard'));
+      } catch {}
+    }
+    return {
+      ok: true,
+      allowlist: res.allowlist
+    };
+  }
+
   const tools = [
     {
       name: 'about',
@@ -198,6 +314,34 @@ export async function initSelfMcpPage({
       }
     },
     {
+      name: 'add_mcp',
+      description:
+        'Add and allow a new MCP Pages site URL in local ai-proxy and register it with Claude Code. NON-READ-ONLY TOOL: Only call this tool when the human user has explicitly asked to add that specific site URL.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          url: {
+            type: 'string',
+            description: 'Full URL or directory URL to the site MCP page (e.g. https://example.github.io/docs/ or https://example.github.io/docs/mcp)'
+          },
+          name: {
+            type: 'string',
+            description: 'Optional short server slug'
+          }
+        },
+        required: ['url'],
+        additionalProperties: false
+      },
+      annotations: {
+        title: 'Add MCP Site (Requires User Request)',
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true
+      },
+      execute: executeAddSite
+    },
+    {
       name: 'add_site',
       description:
         'Add and allow a new MCP Pages site URL in local ai-proxy and register it with Claude Code. NON-READ-ONLY TOOL: Only call this tool when the human user has explicitly asked to add that specific site URL.',
@@ -223,19 +367,31 @@ export async function initSelfMcpPage({
         idempotentHint: true,
         openWorldHint: true
       },
-      async execute({ url, name }) {
-        const res = await fetchAdminJson('/admin/v1/sites', {
-          method: 'POST',
-          body: JSON.stringify({ url, name })
-        });
-        if (adminCtrl) {
-          await adminCtrl.refreshDashboard();
-        }
-        return {
-          ok: true,
-          site: res.site
-        };
-      }
+      execute: executeAddSite
+    },
+    {
+      name: 'remove_mcp',
+      description:
+        'Remove an MCP site from local ai-proxy, revoke its URL prefix from the allowlist, and unregister it from AI tools. DESTRUCTIVE NON-READ-ONLY TOOL: Only call this tool when the human user has explicitly asked to remove that specific site.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          url: {
+            type: 'string',
+            description: 'Normalized site URL to remove'
+          }
+        },
+        required: ['url'],
+        additionalProperties: false
+      },
+      annotations: {
+        title: 'Remove MCP Site (Requires User Request)',
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false
+      },
+      execute: executeRemoveSite
     },
     {
       name: 'remove_site',
@@ -259,19 +415,159 @@ export async function initSelfMcpPage({
         idempotentHint: true,
         openWorldHint: false
       },
-      async execute({ url }) {
-        const res = await fetchAdminJson('/admin/v1/sites', {
-          method: 'DELETE',
-          body: JSON.stringify({ url })
-        });
-        if (adminCtrl) {
-          await adminCtrl.refreshDashboard();
-        }
-        return {
-          ok: true,
-          removed: res.removed
-        };
-      }
+      execute: executeRemoveSite
+    },
+    {
+      name: 'allow_origin',
+      description:
+        'Authorize an origin to use local /v1 chat completions endpoint, or "*" for wildcard pure-chat mode. NON-READ-ONLY TOOL: Only call this tool when the human user has explicitly asked to allow that origin.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          origin: {
+            type: 'string',
+            description: 'Origin URL (e.g. https://example.com) or "*" for open origin mode'
+          },
+          ttlSeconds: {
+            type: 'number',
+            description: 'Optional TTL expiration in seconds'
+          }
+        },
+        required: ['origin'],
+        additionalProperties: false
+      },
+      annotations: {
+        title: 'Allow Origin for /v1 (Requires User Request)',
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      },
+      execute: executeAllowOrigin
+    },
+    {
+      name: 'add_allow_origin',
+      description:
+        'Authorize an origin to use local /v1 chat completions endpoint. Alias for allow_origin. NON-READ-ONLY TOOL: Only call this tool when the human user has explicitly asked to allow that origin.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          origin: {
+            type: 'string',
+            description: 'Origin URL (e.g. https://example.com) or "*" for open origin mode'
+          },
+          ttlSeconds: {
+            type: 'number',
+            description: 'Optional TTL expiration in seconds'
+          }
+        },
+        required: ['origin'],
+        additionalProperties: false
+      },
+      annotations: {
+        title: 'Add Allow Origin (Requires User Request)',
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      },
+      execute: executeAllowOrigin
+    },
+    {
+      name: 'deny_origin',
+      description:
+        'Revoke an origin from accessing local /v1 chat completions endpoint. DESTRUCTIVE NON-READ-ONLY TOOL: Only call this tool when the human user has explicitly asked to revoke that origin.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          origin: {
+            type: 'string',
+            description: 'Origin URL to revoke'
+          }
+        },
+        required: ['origin'],
+        additionalProperties: false
+      },
+      annotations: {
+        title: 'Deny Origin for /v1 (Requires User Request)',
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false
+      },
+      execute: executeDenyOrigin
+    },
+    {
+      name: 'remove_allow_origin',
+      description:
+        'Revoke an origin from accessing local /v1 chat completions endpoint. Alias for deny_origin. DESTRUCTIVE NON-READ-ONLY TOOL: Only call this tool when the human user has explicitly asked to revoke that origin.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          origin: {
+            type: 'string',
+            description: 'Origin URL to revoke'
+          }
+        },
+        required: ['origin'],
+        additionalProperties: false
+      },
+      annotations: {
+        title: 'Remove Allow Origin (Requires User Request)',
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false
+      },
+      execute: executeDenyOrigin
+    },
+    {
+      name: 'allow_prefix',
+      description:
+        'Add a URL prefix to the relay allowlist. NON-READ-ONLY TOOL: Only call this tool when the human user has explicitly asked to allow that prefix.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          prefix: {
+            type: 'string',
+            description: 'URL prefix to allow (e.g. https://example.github.io/)'
+          }
+        },
+        required: ['prefix'],
+        additionalProperties: false
+      },
+      annotations: {
+        title: 'Allow URL Prefix (Requires User Request)',
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      },
+      execute: executeAllowPrefix
+    },
+    {
+      name: 'deny_prefix',
+      description:
+        'Remove a URL prefix from the relay allowlist. DESTRUCTIVE NON-READ-ONLY TOOL: Only call this tool when the human user has explicitly asked to deny that prefix.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          prefix: {
+            type: 'string',
+            description: 'URL prefix to remove from allowlist'
+          }
+        },
+        required: ['prefix'],
+        additionalProperties: false
+      },
+      annotations: {
+        title: 'Deny URL Prefix (Requires User Request)',
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: true,
+        openWorldHint: false
+      },
+      execute: executeDenyPrefix
     }
   ];
 

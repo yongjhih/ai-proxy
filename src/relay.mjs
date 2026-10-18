@@ -77,6 +77,155 @@ function extractBearerToken(req) {
   return match ? match[1].trim() : null;
 }
 
+export function generateDefaultAssistantReply(promptText, permittedTools = []) {
+  const text = String(promptText || '').trim();
+
+  // 1. Add MCP / site intent
+  const addMatch =
+    /(?:add|新增|加)\s*(?:mcp|site|站點)?\s*(https?:\/\/[^\s]+)/i.exec(text) ||
+    /(https?:\/\/[^\s]+).*(?:add|新增|加)/i.exec(text);
+  if (addMatch) {
+    const targetUrl = addMatch[1];
+    return [
+      `我可以為您新增 MCP 站點 \`${targetUrl}\`。`,
+      '',
+      `請點擊下方按鈕以確認在 Dashboard 中新增：`,
+      `[➕ 確認新增 MCP: ${targetUrl}](action:add-mcp?url=${encodeURIComponent(targetUrl)})`,
+      '',
+      `或手動操作 Dashboard：`,
+      `[📋 前往 MCP sites 新增表單](#form-add-site)`
+    ].join('\n');
+  }
+
+  // 2. Remove MCP / site intent
+  const removeMatch = /(?:remove|delete|移除|刪除)\s*(?:mcp|site|站點)?\s*(https?:\/\/[^\s]+|\S+)/i.exec(text);
+  if (
+    removeMatch &&
+    (removeMatch[1].startsWith('http') || text.includes('mcp') || text.includes('site') || text.includes('站點'))
+  ) {
+    const targetUrl = removeMatch[1];
+    return [
+      `我可以為您移除 MCP 站點 \`${targetUrl}\`。`,
+      '',
+      `請點擊下方按鈕以確認移除（將同步取消 URL Prefix 授權）：`,
+      `[🗑️ 確認移除 MCP: ${targetUrl}](action:remove-mcp?url=${encodeURIComponent(targetUrl)})`,
+      '',
+      `[📋 查看 MCP sites 列表](#admin-dashboard-authenticated)`
+    ].join('\n');
+  }
+
+  // 3. Allow Origin intent
+  const allowOriginMatch = /(?:allow|允許|授權)\s*(?:origin)?\s*(https?:\/\/[^\s]+|\*)/i.exec(text);
+  if (allowOriginMatch) {
+    const targetOrigin = allowOriginMatch[1];
+    return [
+      `我可以為您授權 Origin \`${targetOrigin}\` 存取本機 \`/v1\`。`,
+      '',
+      `請點擊下方按鈕以確認授權：`,
+      `[🌐 允許 Origin: ${targetOrigin}](action:allow-origin?origin=${encodeURIComponent(targetOrigin)})`,
+      '',
+      `[📂 展開 Allowed Origins 清單](#details-allowed-origins)`
+    ].join('\n');
+  }
+
+  // 4. Deny / Revoke Origin intent
+  const denyOriginMatch = /(?:deny|revoke|撤銷|拒絕)\s*(?:origin)?\s*(https?:\/\/[^\s]+|\*)/i.exec(text);
+  if (denyOriginMatch) {
+    const targetOrigin = denyOriginMatch[1];
+    return [
+      `我可以為您撤銷 Origin \`${targetOrigin}\` 的 \`/v1\` 存取權限。`,
+      '',
+      `請點擊下方按鈕以確認撤銷：`,
+      `[🚫 撤銷 Origin: ${targetOrigin}](action:deny-origin?origin=${encodeURIComponent(targetOrigin)})`,
+      '',
+      `[📂 展開 Allowed Origins 清單](#details-allowed-origins)`
+    ].join('\n');
+  }
+
+  // 5. Quickstart / Getting Started
+  if (/(?:quickstart|快速上手|開始|入門|install|安裝)/i.test(text)) {
+    return [
+      `歡迎使用 MCP Pages！以下為快速上手指南：`,
+      '',
+      `[🚀 前往快速上手章節 (Quickstart)](#quickstart)`,
+      '',
+      `常用指令範例：`,
+      '```bash',
+      'npx ai-proxy add https://yongjhih.github.io/ai-proxy/mcp --name ai-proxy',
+      '```',
+      '',
+      `[📋 查看已註冊站點](#admin-dashboard-authenticated)`
+    ].join('\n');
+  }
+
+  // 6. Security & Allowlist
+  if (/(?:security|安全|安全性|allowlist|白名單)/i.test(text)) {
+    return [
+      `MCP Pages 嚴格落實七大安全性基準（URL Fragment 金鑰隔離、Origin 檢查、唯讀防護等）：`,
+      '',
+      `[🔒 查看安全性規範 (Security)](doc.html?d=security)`,
+      `[📂 展開 URL Prefix Allowlist](#details-allow-prefix)`,
+      `[📂 展開 Chat Completions Allowed Origins](#details-allowed-origins)`
+    ].join('\n');
+  }
+
+  // 7. Spec & Protocol
+  if (/(?:spec|規格|標準)/i.test(text)) {
+    return [
+      `您可以查看 MCP Pages 完整規格與模型：`,
+      '',
+      `[📄 查看 MCP Pages 規格 (Spec)](doc.html?d=spec)`,
+      `[🔄 查看傳輸協定 (Protocol)](doc.html?d=protocol)`
+    ].join('\n');
+  }
+  if (/(?:protocol|協定|通訊協定)/i.test(text)) {
+    return [
+      `MCP Pages 協定涵蓋 Long Polling 雙向通道與多客戶端 ID 重寫：`,
+      '',
+      `[🔄 查看傳輸協定 (Protocol)](doc.html?d=protocol)`,
+      `[📄 查看 MCP Pages 規格 (Spec)](doc.html?d=spec)`
+    ].join('\n');
+  }
+
+  // 8. Tools
+  if (/(?:tools|工具|webmcp)/i.test(text)) {
+    const permittedSpec = permittedTools.map((t) => t.fullSpec).join(', ') || '無';
+    return [
+      `MCP 頁面可向 AI 暴露多種 WebMCP 工具（如 \`about\`, \`sites\`, \`add_mcp\`, \`remove_mcp\`, \`allow_origin\` 等）：`,
+      '',
+      `[🛠️ 查看 MCP 工具目錄 (mcp.html)](mcp.html)`,
+      '',
+      `目前允許的唯讀工具：\`[${permittedSpec}]\``
+    ].join('\n');
+  }
+
+  // 9. Dashboard navigation
+  if (/(?:dashboard|儀表板|控制台|打開|展開)/i.test(text)) {
+    return [
+      `您可以在 Dashboard 中管理 MCP 站點、URL Allowlist 與 Origin 授權：`,
+      '',
+      `[📊 前往 Dashboard](dashboard.html)`,
+      `[📋 前往 MCP sites 區塊](#admin-dashboard-authenticated)`,
+      `[📂 展開 URL Prefix Allowlist](#details-allow-prefix)`,
+      `[📂 展開 Allowed Origins](#details-allowed-origins)`
+    ].join('\n');
+  }
+
+  // Fallback
+  const toolList = permittedTools.map((t) => t.fullSpec).join(', ') || 'none';
+  return [
+    `ai-proxy local assistant received: "${text}". Permitted read-only tools: [${toolList}].`,
+    '',
+    `您可以直接透過下方捷徑導航或操作：`,
+    `- [🚀 前往快速上手指南](#quickstart)`,
+    `- [📋 查看 MCP sites 列表](#admin-dashboard-authenticated)`,
+    `- [➕ 新增 MCP 站點表單](#form-add-site)`,
+    `- [📂 展開 URL Prefix Allowlist](#details-allow-prefix)`,
+    `- [🔒 查看安全性規範 (Security)](doc.html?d=security)`,
+    `- [🛠️ 查看 MCP 工具目錄 (mcp.html)](mcp.html)`
+  ].join('\n');
+}
+
 export function createRelayServer({
   store = undefined,
   homeDir = undefined,
@@ -827,7 +976,7 @@ export function createRelayServer({
           // Default built-in documentation assistant fallback if no external upstream is configured
           const lastUser = [...messages].reverse().find((m) => m && m.role === 'user');
           const promptText = lastUser && typeof lastUser.content === 'string' ? lastUser.content : '';
-          replyText = `ai-proxy local assistant received: "${promptText}". Permitted read-only tools: [${permittedTools.map((t) => t.fullSpec).join(', ') || 'none'}].`;
+          replyText = generateDefaultAssistantReply(promptText, permittedTools);
         }
 
         sendJson(req, res, 200, {

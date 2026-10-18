@@ -475,7 +475,7 @@ test(
 
       // Call 3: site_tools
       const siteToolsOut = await callRelayTool('site_tools', {});
-      assert.equal(siteToolsOut.tools.length, 6);
+      assert.equal(siteToolsOut.tools.length, 14);
 
       // Call 4: spec
       const specOut = await callRelayTool('spec', { topic: 'security', lang: 'zh-TW' });
@@ -501,6 +501,75 @@ test(
         removeSiteOut.removed,
         'https://example.github.io/added-via-tool/mcp.html'
       );
+
+      // Call 7: add_mcp (alias of add_site)
+      const addMcpOut = await callRelayTool('add_mcp', {
+        url: 'https://example.github.io/added-via-mcp-tool/mcp',
+        name: 'added-mcp'
+      });
+      assert.equal(addMcpOut.ok, true);
+      assert.equal(addMcpOut.site.name, 'added-mcp');
+
+      // Call 8: remove_mcp (alias of remove_site)
+      const removeMcpOut = await callRelayTool('remove_mcp', {
+        url: 'https://example.github.io/added-via-mcp-tool/mcp'
+      });
+      assert.equal(removeMcpOut.ok, true);
+
+      // Call 9: allow_origin
+      const allowOriginOut = await callRelayTool('allow_origin', {
+        origin: 'https://custom-origin.example.com'
+      });
+      assert.equal(allowOriginOut.ok, true);
+      assert.ok(allowOriginOut.allowedOrigins.includes('https://custom-origin.example.com'));
+
+      // Call 10: deny_origin
+      const denyOriginOut = await callRelayTool('deny_origin', {
+        origin: 'https://custom-origin.example.com'
+      });
+      assert.equal(denyOriginOut.ok, true);
+      assert.ok(!denyOriginOut.allowedOrigins.includes('https://custom-origin.example.com'));
+
+      // Call 11: allow_prefix
+      const allowPrefixOut = await callRelayTool('allow_prefix', {
+        prefix: 'https://custom-prefix.example.com/'
+      });
+      assert.equal(allowPrefixOut.ok, true);
+      assert.ok(allowPrefixOut.allowlist.includes('https://custom-prefix.example.com/'));
+
+      // Call 12: deny_prefix
+      const denyPrefixOut = await callRelayTool('deny_prefix', {
+        prefix: 'https://custom-prefix.example.com/'
+      });
+      assert.equal(denyPrefixOut.ok, true);
+      assert.ok(!denyPrefixOut.allowlist.includes('https://custom-prefix.example.com/'));
+
+      // Test Ask AI drawer in dashboard: submit query, render CTA button, and click CTA to add site
+      await page.evalJs(`
+        document.getElementById('ask-ai-trigger').click();
+        const input = document.getElementById('ask-ai-input');
+        input.value = '新增 mcp https://example.github.io/e2e-ask-site/mcp';
+        document.getElementById('ask-ai-form').dispatchEvent(new Event('submit'));
+      `);
+      await new Promise((r) => setTimeout(r, 600));
+
+      const ctaBtnText = await page.evalJs(`(() => {
+        const btn = document.querySelector('.ask-ai-cta-btn');
+        return btn ? btn.textContent : '';
+      })()`);
+      assert.ok(ctaBtnText.includes('新增 MCP'), `Expected CTA button to appear, got: ${ctaBtnText}`);
+
+      // Click the CTA button to add the MCP site from Ask AI
+      await page.evalJs(`(() => {
+        const btn = document.querySelector('.ask-ai-cta-btn');
+        if (btn) btn.click();
+      })()`);
+      await new Promise((r) => setTimeout(r, 600));
+
+      const siteAddedInTable = await page.evalJs(`(() => {
+        return document.querySelector('tr[data-site-url="https://example.github.io/e2e-ask-site/mcp"]') !== null;
+      })()`);
+      assert.equal(siteAddedInTable, true, 'Site added via Ask AI CTA button must appear in dashboard table');
 
       // Also test Rotate Admin Key button last (since it invalidates the old adminKey)
       await page.evalJs(`document.getElementById('btn-rotate-admin-key').click()`);

@@ -273,7 +273,7 @@ export async function mountAdminDashboard({
         ? status.sites
             .map(
               (s) => `
-          <tr data-site-url="${escapeHtml(s.url)}">
+          <tr data-site-url="${escapeHtml(s.url)}" id="site-row-${encodeURIComponent(s.url).replace(/[^a-zA-Z0-9_-]/g, '_')}">
             <td><code>${escapeHtml(s.name)}</code></td>
             <td><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.url)}</a></td>
             <td>
@@ -620,6 +620,16 @@ export async function mountAdminDashboard({
         }
         await refreshDashboard();
       });
+    }
+
+    // Wire Refresh Dashboard Event
+    if (win && typeof win.addEventListener === 'function') {
+      win.__aiProxyRefreshDashboard = refreshDashboard;
+      try {
+        win.addEventListener('ai-proxy-refresh-dashboard', () => {
+          refreshDashboard();
+        });
+      } catch {}
     }
   }
 
