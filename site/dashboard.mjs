@@ -57,6 +57,20 @@ export async function mountAdminDashboard({
     // broadcast channel optional
   }
 
+  if (win && typeof win.addEventListener === 'function') {
+    win.addEventListener('hashchange', async () => {
+      const updatedHs = extractHandshake(win);
+      if (updatedHs.adminKey) {
+        adminKey = updatedHs.adminKey;
+        if (updatedHs.mcpPort) {
+          mcpPort = updatedHs.mcpPort;
+          baseUrl = `http://127.0.0.1:${mcpPort}`;
+        }
+        await refreshDashboard();
+      }
+    });
+  }
+
   function broadcastAdminKey(key, port) {
     if (broadcastChan) {
       try {
@@ -148,6 +162,9 @@ export async function mountAdminDashboard({
 
   async function renderUnauthenticated() {
     const reachable = await probeRelay({ mcpPort });
+    const pageUrl = win && win.location ? win.location.href.split('#')[0] : '';
+    const connectHref = `${baseUrl}/admin/v1/open-dashboard?redirect=${encodeURIComponent(pageUrl)}`;
+
     container.innerHTML = `
       <div class="primer-box" id="dashboard-connect-box">
         <div class="primer-box-header">
@@ -161,9 +178,9 @@ export async function mountAdminDashboard({
             Connect to your local <code>ai-proxy</code> relay to manage registered MCP sites, URL prefix allowlists, and key rotation directly in this tab.
           </p>
           <div class="form-row" style="gap:0.75rem;align-items:center;">
-            <button type="button" class="btn btn-primary" id="btn-connect-dashboard">
+            <a href="${escapeHtml(connectHref)}" class="btn btn-primary" id="btn-connect-dashboard">
               Connect (接上本機 ai-proxy)
-            </button>
+            </a>
             <span style="color:var(--fg-muted);font-size:0.875rem;">或直接貼上管理金鑰：</span>
           </div>
           <form id="form-manual-admin-key" class="form-row" style="margin-top:0.75rem;">
@@ -197,35 +214,10 @@ export async function mountAdminDashboard({
     }
 
     if (connectBtn) {
-      connectBtn.addEventListener('click', async () => {
-        connectBtn.disabled = true;
-        if (feedbackEl) {
-          feedbackEl.innerHTML = '<span class="mono">Connecting to local ai-proxy relay...</span>';
-        }
-        try {
-          const pageUrl = win && win.location ? win.location.href : undefined;
-          await adminFetch('/admin/v1/open-dashboard', {
-            method: 'POST',
-            body: JSON.stringify({ pageUrl })
-          });
-          if (feedbackEl) {
-            feedbackEl.innerHTML = `
-              <div class="flash-banner flash-warning" style="margin-bottom:0.5rem;">
-                <strong>已請求本機 ai-proxy 授權！</strong> 若瀏覽器已自動在新分頁開啟帶金鑰的儀表板，本頁將自動透過跨分頁頻道同步解鎖。
-                <div style="margin-top:0.5rem;">
-                  您也可以執行 <code class="mono">cat ~/.config/ai-proxy/config.json | grep adminKey</code> 並貼至上方輸入框立即解鎖原地展示。
-                </div>
-              </div>
-            `;
-          }
-        } catch (err) {
-          if (feedbackEl) {
-            feedbackEl.innerHTML = `<div class="flash-banner flash-danger">Failed to connect to local relay: ${escapeHtml(
-              err.message
-            )}</div>`;
-          }
-        } finally {
-          connectBtn.disabled = false;
+      connectBtn.addEventListener('click', (ev) => {
+        if (win && win.location) {
+          ev.preventDefault();
+          win.location.href = connectHref;
         }
       });
     }

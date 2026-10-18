@@ -287,12 +287,15 @@ test(
       const badgeRes = await fetch(`${baseUrl}/covpages/badge.svg`);
       assert.equal(badgeRes.status, 200);
 
-      // 3. Verify /dashboard short URL unauthenticated Connect button
+      // 3. Verify /dashboard short URL unauthenticated Connect button redirects and unlocks in place
       await navigateAndCheck('dashboard', 1280, 900, 'dashboard-unauth-desktop.png');
       await page.evalJs(`document.getElementById('btn-connect-dashboard').click()`);
-      await new Promise((r) => setTimeout(r, 200));
-      assert.equal(openedUrls.length, 1);
-      assert.ok(openedUrls[0].includes('#admin-key='));
+      await new Promise((r) => setTimeout(r, 400));
+      assert.equal(
+        await page.evalJs(`window.history.state.__aiProxy.adminKey`),
+        relay.store.getAdminKey(),
+        'Clicking Connect must redirect and unlock adminKey in-place'
+      );
 
       // 4. Open authenticated dashboard.html and click every single button
       const adminKey = relay.store.getAdminKey();
