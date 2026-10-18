@@ -37,7 +37,8 @@ Browser Tab (https://example.github.io/docs/mcp.html running navigator.modelCont
 # 1. Start the local ai-proxy relay (listens on 127.0.0.1:8788)
 npx ai-proxy serve
 
-# Optional: Connect a real upstream LLM for intelligent natural language analysis:
+# Intelligent LLM upstream & conversation sessions:
+# - Auto-detected Local AI CLI: automatically connects to `agy` or `claude` CLI with persistent multi-turn sessions (or pass `--cli <agy|claude>`)
 # - Google Gemini: export GEMINI_API_KEY="AIza..." && npx ai-proxy serve
 # - Anthropic Claude: export ANTHROPIC_API_KEY="sk-ant-..." && npx ai-proxy serve
 # - Ollama / LM Studio: npx ai-proxy serve --upstream http://127.0.0.1:11434/v1 --model llama3

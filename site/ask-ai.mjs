@@ -553,8 +553,14 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
   function clearStoredHistory() {
     if (!win) return;
     try {
-      if (win.sessionStorage) win.sessionStorage.removeItem(STORAGE_KEY_HISTORY);
-      if (win.localStorage) win.localStorage.removeItem(STORAGE_KEY_HISTORY);
+      if (win.sessionStorage) {
+        win.sessionStorage.removeItem(STORAGE_KEY_HISTORY);
+        win.sessionStorage.removeItem('ai_proxy_ask_session_id');
+      }
+      if (win.localStorage) {
+        win.localStorage.removeItem(STORAGE_KEY_HISTORY);
+        win.localStorage.removeItem('ai_proxy_ask_session_id');
+      }
     } catch {}
   }
 
@@ -1068,18 +1074,43 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
       const urlPort = win && win.location && win.location.port ? Number.parseInt(win.location.port, 10) : 0;
       const port = hs.mcpPort !== 8788 ? hs.mcpPort : urlPort || 8788;
 
+      let askSessionId = 'default';
+      try {
+        askSessionId = (win.sessionStorage && win.sessionStorage.getItem('ai_proxy_ask_session_id')) || '';
+        if (!askSessionId) {
+          askSessionId =
+            win.crypto && typeof win.crypto.randomUUID === 'function'
+              ? win.crypto.randomUUID()
+              : `sess_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+          if (win.sessionStorage) win.sessionStorage.setItem('ai_proxy_ask_session_id', askSessionId);
+        }
+      } catch {}
+
+      // Include recent conversation turns for multi-turn session context
+      const recentMessages = messageHistory.slice(-8).map((m) => ({
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: m.content
+      }));
+      if (recentMessages.length === 0 || recentMessages[recentMessages.length - 1].content !== prompt) {
+        recentMessages.push({ role: 'user', content: prompt });
+      }
+
       const res = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': askSessionId
+        },
         body: JSON.stringify({
           model: 'local-default',
+          user: askSessionId,
           messages: [
             {
               role: 'system',
               content:
                 'You are the MCP Pages & ai-proxy documentation and dashboard assistant. Answer concisely and provide CTA action buttons or section links when relevant.'
             },
-            { role: 'user', content: prompt }
+            ...recentMessages
           ],
           stream: false
         })

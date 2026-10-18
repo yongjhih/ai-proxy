@@ -1115,6 +1115,11 @@ export function createRelayServer({
 
       const messages = Array.isArray(body.messages) ? body.messages : [];
       const permittedTools = resolvePermittedV1Tools();
+      const sessionId =
+        (typeof body.user === 'string' && body.user) ||
+        (typeof req.headers['x-session-id'] === 'string' && req.headers['x-session-id']) ||
+        (typeof req.headers['x-conversation-id'] === 'string' && req.headers['x-conversation-id']) ||
+        'default';
 
       try {
         let replyText = '';
@@ -1122,7 +1127,8 @@ export function createRelayServer({
           replyText = await chatBackend({
             messages,
             model: body.model || 'local-default',
-            permittedTools
+            permittedTools,
+            sessionId
           });
         } else {
           // Default built-in documentation assistant fallback if no external upstream is configured
@@ -1153,7 +1159,8 @@ export function createRelayServer({
           },
           ai_proxy: {
             openOriginMode: activeStore.isOpenOriginActive(),
-            permittedReadOnlyTools: permittedTools.map((t) => t.fullSpec)
+            permittedReadOnlyTools: permittedTools.map((t) => t.fullSpec),
+            provider: chatBackend?.provider || 'builtin'
           }
         });
       } catch (err) {
