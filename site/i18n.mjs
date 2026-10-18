@@ -27,7 +27,7 @@ export const STRINGS = {
     security_heading: 'Seven Security Baselines for Shared Origins',
     security_desc:
       'All repositories on <user>.github.io share one browser Origin. ai-proxy isolates every page with URL prefix allowlists and fragment-to-history.state keys.',
-    ask_ai_title: 'Ask AI (Local /v1 Demo)',
+    ask_ai_title: 'Ask AI',
     ask_ai_placeholder: 'Ask how fragment key handoff or prefix allowlisting works...',
     ask_ai_send: 'Send',
     ask_ai_close: 'Close',
@@ -68,7 +68,7 @@ export const STRINGS = {
     security_heading: '針對共用 Origin 的七條安全底線',
     security_desc:
       '<user>.github.io 上的所有網站共用同一個 Origin。ai-proxy 以網址前綴允許清單與 history.state 每頁獨立金鑰隔離敵意鄰居。',
-    ask_ai_title: '問 AI（本機 /v1 對話示範）',
+    ask_ai_title: 'Ask AI',
     ask_ai_placeholder: '詢問 URL fragment 金鑰交接或允許清單前綴如何運作…',
     ask_ai_send: '送出',
     ask_ai_close: '關閉',
