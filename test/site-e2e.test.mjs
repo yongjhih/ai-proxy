@@ -314,16 +314,26 @@ test(
         900,
         'dashboard-auth-desktop.png'
       );
+      // Wait for auto-add to complete and clean hash
+      let autoAdded = false;
+      for (let i = 0; i < 30; i++) {
+        const text = await page.evalJs(`document.getElementById('dashboard-root')?.textContent || ''`);
+        if (text.includes('covpages') || text.includes('已直接接入 MCP 站點')) {
+          autoAdded = true;
+          break;
+        }
+        await new Promise((r) => setTimeout(r, 100));
+      }
+      assert.ok(autoAdded, 'Deep-linked add-url is directly auto-connected on dashboard load');
       assert.equal(
         await page.evalJs(`window.location.hash`),
-        '#add-url=https%3A%2F%2Fexample.github.io%2Fcovpages%2Fmcp',
-        'add-url is preserved in hash while admin-key is scrubbed into history.state'
+        '',
+        'add-url is cleaned from hash on auto-connection'
       );
       assert.equal(await page.evalJs(`window.history.state.__aiProxy.adminKey`), adminKey);
-      assert.equal(
-        await page.evalJs(`document.querySelector('#form-add-site input[name="url"]').value`),
-        'https://example.github.io/covpages/mcp',
-        'Deep-linked add-url must pre-populate #form-add-site input[name="url"]'
+      assert.ok(
+        relay.store.getSite('https://example.github.io/covpages/mcp'),
+        'Deep-linked add-url must be added directly into relay store'
       );
       assert.ok(
         (await page.evalJs(`document.querySelector('#dashboard-root h2').textContent`)).includes('MCP sites'),

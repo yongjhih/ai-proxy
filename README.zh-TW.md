@@ -1,7 +1,7 @@
 # ai-proxy · MCP Pages 開放規範與本機參考轉送
 
 [![Coverage](https://yongjhih.github.io/ai-proxy/covpages/badge.svg)](https://yongjhih.github.io/ai-proxy/covpages/)
-[![MCP Pages: Connect](https://img.shields.io/badge/MCP%20Pages-Connect-238636?logo=github&logoColor=white)](https://yongjhih.github.io/ai-proxy/dashboard.html#add-url=https%3A%2F%2Fyongjhih.github.io%2Fai-proxy%2Fmcp)
+[![MCP Pages: Connect](https://img.shields.io/badge/MCP%20Pages-Connect-238636?logo=github&logoColor=white)](https://yongjhih.github.io/ai-proxy/dashboard#add-url=https%3A%2F%2Fyongjhih.github.io%2Fai-proxy%2Fmcp)
 [![Specification](https://img.shields.io/badge/docs-specification-blue.svg)](https://yongjhih.github.io/ai-proxy/doc?d=zh-TW/spec)
 [![Security](https://img.shields.io/badge/security-7%20baselines-success.svg)](https://yongjhih.github.io/ai-proxy/doc?d=zh-TW/security)
 [![Devcontainer](https://img.shields.io/badge/devcontainer-ready-blue.svg)](.devcontainer/devcontainer.json)

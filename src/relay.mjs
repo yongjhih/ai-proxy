@@ -1192,7 +1192,7 @@ export function createRelayServer({
         parsedUrl.searchParams.get('add-url') ||
         parsedUrl.searchParams.get('add_url') ||
         parsedUrl.searchParams.get('add');
-      let targetBaseUrl = `http://127.0.0.1:${boundPort}/dashboard.html`;
+      let targetBaseUrl = `http://127.0.0.1:${boundPort}/dashboard`;
       if (redirectParam) {
         try {
           const normalizedTarget = normalizePageUrl(redirectParam);
@@ -1266,7 +1266,7 @@ export function createRelayServer({
         parsedUrl.searchParams.get('add_url') ||
         parsedUrl.searchParams.get('add');
 
-      let targetBaseUrl = `http://127.0.0.1:${boundPort}/dashboard.html`;
+      let targetBaseUrl = `http://127.0.0.1:${boundPort}/dashboard`;
       if (body && typeof body.pageUrl === 'string' && body.pageUrl) {
         try {
           const normalizedTarget = normalizePageUrl(body.pageUrl);
