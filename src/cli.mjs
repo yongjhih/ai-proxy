@@ -72,6 +72,8 @@ function parseFlags(args) {
       flags.noPrefix = true;
     } else if (arg === '--upstream' || arg === '--upstream-url') {
       flags.upstream = args[++i];
+    } else if (arg === '--cli') {
+      flags.cli = args[++i];
     } else if (arg === '--model' || arg === '-m') {
       flags.model = args[++i];
     } else if (arg === '--gemini-key') {
@@ -134,7 +136,7 @@ export async function runCli(
       `Usage: ai-proxy <command> [options]
 
 Commands:
-  serve [--port 8788] [--allow-tool mcp__<server>__<tool>] [--upstream <url>] [--model <name>]
+  serve [--port 8788] [--allow-tool mcp__<server>__<tool>] [--upstream <url>] [--cli <agy|claude>] [--model <name>]
   mcp --url <page_url> [--port 8788]
   add <page_url> [--name <slug>] [--read-only] [--no-origin] [--no-prefix] [--port 8788]
   remove <page_url_or_name>
@@ -185,6 +187,7 @@ Commands:
         geminiKey: flags.geminiKey,
         anthropicKey: flags.anthropicKey,
         openaiKey: flags.openaiKey,
+        cliName: flags.cli,
         defaultModel: flags.model,
         env
       });

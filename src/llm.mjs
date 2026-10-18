@@ -1,9 +1,74 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import childProcess from 'node:child_process';
+import crypto from 'node:crypto';
+
 /**
  * Upstream LLM integration for ai-proxy.
- * Supports OpenAI-compatible endpoints (Ollama, LM Studio, OpenAI, vLLM),
- * Google Gemini (GEMINI_API_KEY), and Anthropic Claude (ANTHROPIC_API_KEY).
- * Zero external runtime dependencies: uses native globalThis.fetch.
+ * Supports:
+ *  1. Auto-detected local AI CLIs:
+ *     - agy CLI (Gemini-powered AGY agent with multi-turn --conversation session persistence)
+ *     - claude CLI (Claude Code CLI with --session-id persistence)
+ *  2. Cloud / Upstream HTTP endpoints:
+ *     - OpenAI-compatible endpoints (Ollama, LM Studio, OpenAI, vLLM)
+ *     - Google Gemini API (GEMINI_API_KEY)
+ *     - Anthropic Claude API (ANTHROPIC_API_KEY)
+ * Zero external runtime dependencies: uses native Node.js child_process, crypto, and globalThis.fetch.
  */
+
+export function findExecutable(name, env = process.env) {
+  if (!name || typeof name !== 'string') return null;
+
+  // If already an absolute or relative path containing path separator
+  if (name.includes('/') || (process.platform === 'win32' && name.includes('\\'))) {
+    try {
+      if (fs.existsSync(name) && fs.statSync(name).isFile()) {
+        return path.resolve(name);
+      }
+    } catch {
+      return null;
+    }
+  }
+
+  const pathEnv = env.PATH || '';
+  const delimiter = process.platform === 'win32' ? ';' : ':';
+  const dirs = pathEnv.split(delimiter).filter(Boolean);
+  const exts =
+    process.platform === 'win32'
+      ? (env.PATHEXT || '.EXE;.CMD;.BAT;.COM').split(';')
+      : [''];
+
+  const homeDir = env.HOME || (typeof os.homedir === 'function' ? os.homedir() : '');
+  const searchDirs = [
+    ...dirs,
+    '/usr/local/bin',
+    '/opt/homebrew/bin',
+    path.join(homeDir, '.local', 'bin'),
+    path.join(homeDir, '.cargo', 'bin'),
+    path.join(homeDir, '.npm-global', 'bin')
+  ];
+
+  const seen = new Set();
+  for (const dir of searchDirs) {
+    if (!dir || seen.has(dir)) continue;
+    seen.add(dir);
+    for (const ext of exts) {
+      const full = path.join(dir, name + ext);
+      try {
+        if (fs.existsSync(full)) {
+          const stat = fs.statSync(full);
+          if (stat.isFile()) {
+            return full;
+          }
+        }
+      } catch {
+        // continue
+      }
+    }
+  }
+  return null;
+}
 
 export function buildSystemContext({ permittedTools = [], baseContext = '' } = {}) {
   const toolList = (permittedTools || [])
@@ -32,8 +97,11 @@ export function detectLlmProvider({
   geminiKey = undefined,
   anthropicKey = undefined,
   openaiKey = undefined,
-  env = process.env
+  cliName = undefined,
+  env = process.env,
+  findExecutableFn = findExecutable
 } = {}) {
+  // 1. Explicit upstream URL / base URL
   const effectiveUpstream =
     upstreamUrl ||
     env.AI_PROXY_UPSTREAM_URL ||
@@ -48,6 +116,7 @@ export function detectLlmProvider({
     };
   }
 
+  // 2. Explicit Google Gemini API Key
   const effectiveGeminiKey = geminiKey || env.GEMINI_API_KEY || env.GOOGLE_API_KEY;
   if (effectiveGeminiKey) {
     return {
@@ -56,6 +125,7 @@ export function detectLlmProvider({
     };
   }
 
+  // 3. Explicit Anthropic Claude API Key
   const effectiveAnthropicKey = anthropicKey || env.ANTHROPIC_API_KEY;
   if (effectiveAnthropicKey) {
     return {
@@ -64,6 +134,7 @@ export function detectLlmProvider({
     };
   }
 
+  // 4. Explicit OpenAI API Key
   const effectiveOpenaiKey = openaiKey || env.OPENAI_API_KEY;
   if (effectiveOpenaiKey) {
     return {
@@ -71,6 +142,38 @@ export function detectLlmProvider({
       upstreamUrl: 'https://api.openai.com/v1',
       key: effectiveOpenaiKey
     };
+  }
+
+  // 5. Explicit CLI option or auto-detect local CLI (agy or claude)
+  const targetCli = cliName || env.AI_PROXY_CLI;
+  if (targetCli) {
+    const bin = findExecutableFn(targetCli, env);
+    if (bin) {
+      return {
+        type: `${targetCli}-cli`,
+        binPath: bin,
+        cliName: targetCli
+      };
+    }
+  } else {
+    // Check agy first (fast, Gemini-powered, supports multi-turn JSON output)
+    const agyBin = findExecutableFn('agy', env);
+    if (agyBin) {
+      return {
+        type: 'agy-cli',
+        binPath: agyBin,
+        cliName: 'agy'
+      };
+    }
+    // Check claude CLI (Claude Code)
+    const claudeBin = findExecutableFn('claude', env);
+    if (claudeBin) {
+      return {
+        type: 'claude-cli',
+        binPath: claudeBin,
+        cliName: 'claude'
+      };
+    }
   }
 
   return null;
@@ -82,9 +185,12 @@ export function createLlmBackend({
   geminiKey = undefined,
   anthropicKey = undefined,
   openaiKey = undefined,
+  cliName = undefined,
   defaultModel = undefined,
   env = process.env,
-  fetchFn = globalThis.fetch
+  fetchFn = globalThis.fetch,
+  findExecutableFn = findExecutable,
+  execFileFn = childProcess.execFile
 } = {}) {
   const provider = detectLlmProvider({
     upstreamUrl,
@@ -92,12 +198,25 @@ export function createLlmBackend({
     geminiKey,
     anthropicKey,
     openaiKey,
-    env
+    cliName,
+    env,
+    findExecutableFn
   });
 
   if (!provider) return null;
 
-  async function chatBackend({ messages = [], model = undefined, permittedTools = [], signal = undefined }) {
+  // Persistent session mapping for CLI callers
+  // For agy: sessionId -> conversationId
+  // For claude: sessionId -> uuid
+  const sessionMap = new Map();
+
+  async function chatBackend({
+    messages = [],
+    model = undefined,
+    permittedTools = [],
+    sessionId = 'default',
+    signal = undefined
+  }) {
     const effectiveModel =
       model && model !== 'local-default' && model !== 'local'
         ? model
@@ -108,8 +227,137 @@ export function createLlmBackend({
               ? 'claude-3-5-sonnet-20241022'
               : provider.type === 'openai'
                 ? 'gpt-4o-mini'
-                : 'default');
+                : provider.type === 'agy-cli'
+                  ? 'agy'
+                  : provider.type === 'claude-cli'
+                    ? 'claude'
+                    : 'default');
 
+    // 1. agy CLI
+    if (provider.type === 'agy-cli') {
+      const activeSessionId = String(sessionId || 'default');
+      const savedConversationId = sessionMap.get(activeSessionId);
+
+      const systemMessages = messages.filter((m) => m && m.role === 'system');
+      const baseSysText = systemMessages.map((m) => m.content).join('\n');
+      const systemContext = buildSystemContext({ permittedTools, baseContext: baseSysText });
+
+      const lastUser = [...messages].reverse().find((m) => m && m.role === 'user');
+      const userPrompt = lastUser && typeof lastUser.content === 'string' ? lastUser.content : 'Hello';
+
+      let args = [];
+      if (savedConversationId) {
+        // Resuming conversation: agy already has context from prior turns
+        args = ['--conversation', savedConversationId, '-p', userPrompt, '--output-format', 'json'];
+      } else {
+        // First turn of this session: inject system prompt instructions
+        const initialPrompt = `${systemContext}\n\n---\nUser query: ${userPrompt}`;
+        args = ['-p', initialPrompt, '--output-format', 'json'];
+      }
+
+      const runAgy = (cliArgs) =>
+        new Promise((resolve, reject) => {
+          execFileFn(
+            provider.binPath,
+            cliArgs,
+            {
+              timeout: 90000,
+              maxBuffer: 10 * 1024 * 1024,
+              signal
+            },
+            (err, stdout, stderr) => {
+              if (err) {
+                const msg = (stderr || stdout || err.message).trim();
+                return reject(new Error(`agy CLI execution failed: ${msg}`));
+              }
+              try {
+                const parsed = JSON.parse(stdout);
+                if (parsed.status && parsed.status !== 'SUCCESS') {
+                  return reject(new Error(`agy CLI error: ${parsed.status}`));
+                }
+                resolve(parsed);
+              } catch {
+                resolve({ response: stdout });
+              }
+            }
+          );
+        });
+
+      let resData;
+      try {
+        resData = await runAgy(args);
+      } catch (err) {
+        // If resuming a conversation failed (e.g. conversation expired or not found),
+        // gracefully fall back to starting a fresh conversation
+        if (savedConversationId) {
+          sessionMap.delete(activeSessionId);
+          const initialPrompt = `${systemContext}\n\n---\nUser query: ${userPrompt}`;
+          resData = await runAgy(['-p', initialPrompt, '--output-format', 'json']);
+        } else {
+          throw err;
+        }
+      }
+
+      if (resData.conversation_id) {
+        sessionMap.set(activeSessionId, resData.conversation_id);
+      }
+
+      return (resData.response || '').trim();
+    }
+
+    // 2. claude CLI
+    if (provider.type === 'claude-cli') {
+      const activeSessionId = String(sessionId || 'default');
+      let claudeUuid = sessionMap.get(activeSessionId);
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!claudeUuid) {
+        claudeUuid = uuidRegex.test(activeSessionId)
+          ? activeSessionId
+          : crypto.randomUUID();
+        sessionMap.set(activeSessionId, claudeUuid);
+      }
+
+      const systemMessages = messages.filter((m) => m && m.role === 'system');
+      const baseSysText = systemMessages.map((m) => m.content).join('\n');
+      const systemPrompt = buildSystemContext({ permittedTools, baseContext: baseSysText });
+
+      const lastUser = [...messages].reverse().find((m) => m && m.role === 'user');
+      const userPrompt = lastUser && typeof lastUser.content === 'string' ? lastUser.content : 'Hello';
+
+      const args = [
+        '-p',
+        userPrompt,
+        '--session-id',
+        claudeUuid,
+        '--system-prompt',
+        systemPrompt,
+        '--output-format',
+        'text',
+        '--tools',
+        ''
+      ];
+
+      return new Promise((resolve, reject) => {
+        execFileFn(
+          provider.binPath,
+          args,
+          {
+            timeout: 90000,
+            maxBuffer: 10 * 1024 * 1024,
+            signal
+          },
+          (err, stdout, stderr) => {
+            if (err) {
+              const msg = (stderr || stdout || err.message).trim();
+              return reject(new Error(`claude CLI execution failed: ${msg}`));
+            }
+            resolve(String(stdout || '').trim());
+          }
+        );
+      });
+    }
+
+    // 3. Google Gemini API
     if (provider.type === 'gemini') {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
         effectiveModel
@@ -149,6 +397,7 @@ export function createLlmBackend({
       return typeof text === 'string' ? text : '';
     }
 
+    // 4. Anthropic Claude API
     if (provider.type === 'anthropic') {
       const url = 'https://api.anthropic.com/v1/messages';
       const systemMessages = messages.filter((m) => m && m.role === 'system');
@@ -192,7 +441,7 @@ export function createLlmBackend({
       return typeof text === 'string' ? text : '';
     }
 
-    // OpenAI or OpenAI-compatible (Ollama, LM Studio, vLLM, etc.)
+    // 5. OpenAI or OpenAI-compatible (Ollama, LM Studio, vLLM, etc.)
     let endpoint = provider.upstreamUrl || 'https://api.openai.com/v1';
     if (!endpoint.endsWith('/chat/completions')) {
       endpoint = endpoint.replace(/\/+$/, '') + '/chat/completions';
@@ -246,8 +495,14 @@ export function createLlmBackend({
         ? 'claude-3-5-sonnet-20241022'
         : provider.type === 'openai'
           ? 'gpt-4o-mini'
-          : 'default');
+          : provider.type === 'agy-cli'
+            ? 'agy'
+            : provider.type === 'claude-cli'
+              ? 'claude'
+              : 'default');
   chatBackend.upstreamUrl = provider.upstreamUrl || null;
+  chatBackend.binPath = provider.binPath || null;
+  chatBackend.sessionMap = sessionMap;
 
   return chatBackend;
 }
