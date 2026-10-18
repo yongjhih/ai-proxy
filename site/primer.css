@@ -162,7 +162,7 @@ a:hover {
   outline-offset: 2px;
 }
 
-/* Header & Navigation */
+/* GitHub Primer AppHeader, Pagehead & UnderlineNav */
 .site-header {
   background-color: var(--bg-subtle);
   border-bottom: 1px solid var(--border-default);
@@ -174,7 +174,13 @@ a:hover {
 .site-header-inner {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 0.625rem 1.25rem;
+  padding: 0.75rem 1.25rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.site-header-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -194,6 +200,18 @@ a:hover {
 
 .brand-link:hover {
   color: var(--accent-fg);
+  text-decoration: none;
+}
+
+.repo-visibility-label {
+  display: inline-block;
+  padding: 0 7px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  color: var(--fg-muted);
+  border: 1px solid var(--border-default);
+  border-radius: 2em;
 }
 
 .site-nav {
@@ -201,28 +219,42 @@ a:hover {
   align-items: center;
   gap: 0.25rem;
   flex-wrap: wrap;
+  margin-bottom: -1px;
 }
 
 .nav-link {
   display: inline-flex;
   align-items: center;
-  padding: 0.35rem 0.65rem;
-  border-radius: 6px;
+  gap: 0.4rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 2px solid transparent;
   color: var(--fg-default);
   text-decoration: none;
   font-size: 0.875rem;
-  font-weight: 500;
-  transition: background-color 150ms ease;
+  font-weight: 400;
+  line-height: 1.4;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.nav-link svg {
+  color: var(--fg-muted);
+  flex-shrink: 0;
 }
 
 .nav-link:hover {
   background-color: var(--btn-hover-bg);
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
   text-decoration: none;
 }
 
 .nav-link[aria-current="page"] {
   font-weight: 600;
-  background-color: var(--bg-inset);
+  border-bottom-color: #fd8c73;
+}
+
+.nav-link[aria-current="page"] svg {
+  color: var(--fg-default);
 }
 
 .header-controls {
