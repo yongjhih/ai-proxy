@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>ai-proxy · MCP Pages 開放規範與本機參考轉送</title>
+  <link rel="stylesheet" href="site/primer.css" />
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('ai-proxy-theme') || 'system';
+        if (saved === 'light' || saved === 'dark') {
+          document.documentElement.setAttribute('data-theme', saved);
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+        }
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+        <a class="brand-link" href="zh-TW.html">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25ZM7.25 8a.749.749 0 0 1-.22.53l-2.25 2.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L5.44 8 3.72 6.28a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l2.25 2.25c.141.14.22.331.22.53Zm1.5 1.5h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1 0-1.5Z"></path>
+          </svg>
+          <span>ai-proxy · MCP Pages</span>
+        </a>
+        <nav class="site-nav" aria-label="主要導覽">
+          <a class="nav-link" href="zh-TW.html" aria-current="page">總覽</a>
+          <a class="nav-link" href="doc.html?d=zh-TW/index">規範文件</a>
+          <a class="nav-link" href="dashboard.html">儀表板</a>
+          <a class="nav-link" href="mcp.html">本站 MCP 頁</a>
+        </nav>
+      </div>
+      <div class="header-controls">
+        <div class="theme-segmented" role="group" aria-label="色彩主題">
+          <button type="button" class="theme-btn" data-theme-mode="system" aria-pressed="true">跟隨系統</button>
+          <button type="button" class="theme-btn" data-theme-mode="light" aria-pressed="false">亮色</button>
+          <button type="button" class="theme-btn" data-theme-mode="dark" aria-pressed="false">暗色</button>
+        </div>
+        <a class="btn btn-sm" href="index.html" lang="en">English</a>
+        <button type="button" class="btn btn-sm btn-primary" id="ask-ai-trigger" aria-expanded="false">問 AI</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="prose-measure" style="margin-bottom:2rem;">
+      <h1>讓任何靜態網站不用後端，就能成為 MCP 工具伺服器。</h1>
+      <p>
+        <strong>MCP Pages</strong> 定義了靜態網站提供前端 WebMCP 工具的開放規範；<strong>ai-proxy</strong> 是跑在使用者本機上的零依賴參考轉送，將瀏覽器分頁安全地接上 Claude Code 與各類 MCP 客戶端。
+      </p>
+      <div class="form-row" style="margin-top:1.25rem;">
+        <a class="btn btn-primary" href="dashboard.html">開啟儀表板</a>
+        <a class="btn" href="doc.html?d=zh-TW/spec">閱讀規範文件</a>
+        <a class="btn" href="mcp.html">檢視本站的 MCP 頁</a>
+      </div>
+    </section>
+
+    <section class="primer-box" aria-labelledby="quickstart-title">
+      <div class="primer-box-header">
+        <h2 id="quickstart-title">快速開始指令</h2>
+        <span class="badge badge-readonly">零外部 npm 套件依賴</span>
+      </div>
+      <div class="primer-box-row">
+        <p style="margin-bottom:0.5rem;">
+          直接複製以下指令到終端機執行（網址已於執行期自動替換為本站目前的部署路徑）：
+        </p>
+        <pre><code data-replace-base-url="true"># 1. 啟動本機 ai-proxy 轉送服務（預設監聽 127.0.0.1:8788）
+npx ai-proxy serve
+
+# 2. 將本站的 MCP 頁加入允許清單並註冊到 Claude Code
+npx ai-proxy add https://&lt;host&gt;/&lt;org&gt;/&lt;repo&gt;/mcp.html --name ai-proxy-docs
+
+# 3. 開啟帶管理金鑰的本機儀表板分頁
+npx ai-proxy open dashboard</code></pre>
+      </div>
+      <div class="primer-box-row">
+        <p style="margin-bottom:0.5rem;">
+          想為自己的 GitHub Pages 加上 MCP 頁？匯出零依賴前端模組並執行靜態檢查：
+        </p>
+        <pre><code>npx ai-proxy vendor --out ./vendor/ai-proxy-web
+npx ai-proxy doctor --dir .</code></pre>
+      </div>
+    </section>
+
+    <section aria-labelledby="arch-title">
+      <h2 id="arch-title">MCP Pages 運作架構</h2>
+      <p class="prose-measure">
+        GitHub Pages 等純靜態託管只提供檔案下載，無法執行常駐後端程序。MCP Pages 反轉了連線方向：工具邏輯在使用者自己的瀏覽器分頁內透過 <code>navigator.modelContext</code> 註冊，並主動連向本機的 <code>127.0.0.1:8788</code>。
+      </p>
+      <div class="primer-box" style="padding:1rem;">
+        <div class="mermaid">
+sequenceDiagram
+    participant CC as Claude Code / MCP 客戶端
+    participant Relay as 本機 ai-proxy (127.0.0.1:8788)
+    participant Tab as 瀏覽器分頁 (mcp.html)
+
+    CC-&gt;&gt;Relay: POST /mcp?url=https://.../mcp.html (tools/call)
+    alt 分頁尚未連線（自動喚醒）
+        Relay-&gt;&gt;Tab: 開啟分頁並帶入 #mcp-key=...&amp;mcp-port=8788
+        Tab-&gt;&gt;Tab: 將 #mcp-key 移入 history.state 並抹除網址列
+        Tab-&gt;&gt;Relay: POST /tab/hello (Bearer pageKey, tools[])
+        Tab-&gt;&gt;Relay: GET /tab/events (SSE 事件流)
+    end
+    Relay-&gt;&gt;Tab: SSE 事件: call { id: "s1:1", name, arguments }
+    Tab-&gt;&gt;Relay: POST /tab/result { id: "s1:1", result }
+    Relay-&gt;&gt;CC: JSON-RPC 2.0 回應 { id: 1, result }
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="security-title">
+      <h2 id="security-title">針對共用 Origin 的七條安全底線</h2>
+      <p class="prose-measure">
+        同一個 GitHub 帳號或組織下的所有 <code>https://&lt;user&gt;.github.io/&lt;repo&gt;/</code> 專案網站共用同一個瀏覽器 Origin。若本機橋接直接信任 Origin 或把金鑰存進 <code>localStorage</code>，同帳號下的惡意專案即可劫持轉送。<code>ai-proxy</code> 強制實作七條底線：
+      </p>
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>規則</th>
+              <th>防禦威脅</th>
+              <th>規範機制</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>規則一</code></td>
+              <td>同 Origin 惡意鄰居專案</td>
+              <td>路徑邊界網址前綴允許清單（<code>https://u.github.io/a/</code> 絕不匹配 <code>/a-evil/</code>）。</td>
+            </tr>
+            <tr>
+              <td><code>規則二</code></td>
+              <td>同 Origin 儲存空間金鑰外洩</td>
+              <td>每頁獨立隨機金鑰由 URL fragment (<code>#mcp-key=</code>) 傳入，立即移入分頁專屬 <code>history.state</code> 並抹除網址列。</td>
+            </tr>
+            <tr>
+              <td><code>規則三</code></td>
+              <td>網頁偽造 <code>/mcp</code> 請求</td>
+              <td><code>POST /mcp</code> 若帶有瀏覽器 <code>Origin</code> 標頭，一律回傳 <code>403 Forbidden</code>。</td>
+            </tr>
+            <tr>
+              <td><code>規則四</code></td>
+              <td><code>/v1</code> 提示詞注入越權呼叫工具</td>
+              <td><code>/v1/chat/completions</code> 預設零工具；僅允許由 <code>--allow-tool</code> 逐一點名且 <code>readOnlyHint === true</code> 的唯讀工具。</td>
+            </tr>
+            <tr>
+              <td><code>規則五</code></td>
+              <td>未授權頁面竊取管理金鑰</td>
+              <td><code>POST /admin/v1/open-dashboard</code> 僅由本機開啟新分頁，絕不在 HTTP 回應內回傳金鑰，並限制每 10 秒最多一次。</td>
+            </tr>
+            <tr>
+              <td><code>規則六</code></td>
+              <td>背景隱形執行</td>
+              <td>工具必須在肉眼可見的瀏覽器分頁中執行，並顯示工具清單與呼叫次數。</td>
+            </tr>
+            <tr>
+              <td><code>規則七</code></td>
+              <td>遺忘關閉萬用字元 <code>*</code></td>
+              <td><code>/v1</code> 萬用字元 <code>*</code> 強制鎖死為零工具純對話、預設 15 分鐘自動到期，並在儀表板顯示醒目警告。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section aria-labelledby="docs-index-title">
+      <h2 id="docs-index-title">規範文件目錄</h2>
+      <div class="primer-box">
+        <div class="primer-box-row" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+          <div>
+            <strong><a href="doc.html?d=zh-TW/index">總覽與架構說明 (docs/zh-TW/index.md)</a></strong>
+            <div style="color:var(--fg-muted);font-size:0.875rem;">為什麼靜態網站需要前端 WebMCP，以及三大組件如何協作。</div>
+          </div>
+          <a class="btn btn-sm" href="doc.html?d=index" lang="en">English</a>
+        </div>
+        <div class="primer-box-row" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+          <div>
+            <strong><a href="doc.html?d=zh-TW/spec">MCP Pages 規範 (docs/zh-TW/spec.md)</a></strong>
+            <div style="color:var(--fg-muted);font-size:0.875rem;">頁面結構、網址正規化、<code>navigator.modelContext</code> 相容層與工具標註。</div>
+          </div>
+          <a class="btn btn-sm" href="doc.html?d=spec" lang="en">English</a>
+        </div>
+        <div class="primer-box-row" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+          <div>
+            <strong><a href="doc.html?d=zh-TW/protocol">轉送通訊協定 (docs/zh-TW/protocol.md)</a></strong>
+            <div style="color:var(--fg-muted);font-size:0.875rem;"><code>/tab/*</code>、<code>/mcp</code>、<code>/v1</code> 與 <code>/admin/v1/*</code> 端點、JSON-RPC ID 改寫與重連寬限期。</div>
+          </div>
+          <a class="btn btn-sm" href="doc.html?d=protocol" lang="en">English</a>
+        </div>
+        <div class="primer-box-row" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+          <div>
+            <strong><a href="doc.html?d=zh-TW/security">安全模型與威脅分析 (docs/zh-TW/security.md)</a></strong>
+            <div style="color:var(--fg-muted);font-size:0.875rem;">深入解析共用 GitHub Pages Origin 下的七條安全底線。</div>
+          </div>
+          <a class="btn btn-sm" href="doc.html?d=security" lang="en">English</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <aside class="ask-ai-drawer" id="ask-ai-drawer" data-open="false" aria-hidden="true" aria-label="問 AI 助手">
+    <div class="ask-ai-header">
+      <strong>問 AI（本機 /v1 對話示範）</strong>
+      <button type="button" class="btn btn-sm" id="ask-ai-close">關閉</button>
+    </div>
+    <div class="ask-ai-messages" id="ask-ai-messages">
+      <div class="ask-ai-msg ask-ai-msg-assistant">
+        透過本機 <code>http://127.0.0.1:8788/v1/chat/completions</code> 回答；僅開放逐一點名的唯讀工具。
+      </div>
+    </div>
+    <div class="ask-ai-footer">
+      <form id="ask-ai-form" class="form-row">
+        <input type="text" id="ask-ai-input" placeholder="詢問 URL fragment 金鑰交接或允許清單如何運作…" style="flex:1;min-width:0;" required />
+        <button type="submit" class="btn btn-primary btn-sm">送出</button>
+      </form>
+    </div>
+  </aside>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"
+    integrity="sha384-rbtjAdnIQE/aQJGEgXrVUlMibdfTSa4PQju4HDhN3sR2PmaKFzhEafuePsl9H/9I"
+    crossorigin="anonymous"
+  ></script>
+  <script>
+    (function () {
+      var baseUrl = new URL('./', window.location.href).href;
+      var nodes = document.querySelectorAll('[data-replace-base-url="true"]');
+      for (var i = 0; i < nodes.length; i++) {
+        nodes[i].textContent = nodes[i].textContent.replace(/https:\/\/<host>\/<org>\/<repo>\//g, baseUrl);
+      }
+
+      var currentMode = 'system';
+      try {
+        currentMode = localStorage.getItem('ai-proxy-theme') || 'system';
+      } catch (e) {}
+
+      var buttons = document.querySelectorAll('.theme-btn[data-theme-mode]');
+      function applyTheme(mode) {
+        currentMode = mode;
+        try {
+          localStorage.setItem('ai-proxy-theme', mode);
+        } catch (e) {}
+        if (mode === 'light' || mode === 'dark') {
+          document.documentElement.setAttribute('data-theme', mode);
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+        }
+        for (var j = 0; j < buttons.length; j++) {
+          var b = buttons[j];
+          b.setAttribute('aria-pressed', b.getAttribute('data-theme-mode') === mode ? 'true' : 'false');
+        }
+      }
+      applyTheme(currentMode);
+      for (var k = 0; k < buttons.length; k++) {
+        buttons[k].addEventListener('click', function (ev) {
+          applyTheme(ev.currentTarget.getAttribute('data-theme-mode') || 'system');
+        });
+      }
+
+      if (window.mermaid && typeof window.mermaid.initialize === 'function') {
+        window.mermaid.initialize({ startOnLoad: true, securityLevel: 'strict' });
+      }
+    })();
+  </script>
+  <script type="module">
+    import { initAskAiDrawer } from './site/ask-ai.mjs';
+    initAskAiDrawer({ lang: 'zh-TW' });
+  </script>
+</body>
+</html>

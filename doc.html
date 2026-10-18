@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Documentation · ai-proxy &amp; MCP Pages</title>
+  <link rel="stylesheet" href="site/primer.css" />
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem('ai-proxy-theme') || 'system';
+        if (saved === 'light' || saved === 'dark') {
+          document.documentElement.setAttribute('data-theme', saved);
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+        }
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+        <a class="brand-link" href="index.html">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+            <path d="M0 2.75C0 1.784.784 1 1.75 1h12.5c.966 0 1.75.784 1.75 1.75v10.5A1.75 1.75 0 0 1 14.25 15H1.75A1.75 1.75 0 0 1 0 13.25Zm1.75-.25a.25.25 0 0 0-.25.25v10.5c0 .138.112.25.25.25h12.5a.25.25 0 0 0 .25-.25V2.75a.25.25 0 0 0-.25-.25ZM7.25 8a.749.749 0 0 1-.22.53l-2.25 2.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L5.44 8 3.72 6.28a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215l2.25 2.25c.141.14.22.331.22.53Zm1.5 1.5h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1 0-1.5Z"></path>
+          </svg>
+          <span>ai-proxy · MCP Pages</span>
+        </a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a class="nav-link" href="index.html">Overview</a>
+          <a class="nav-link" href="doc.html?d=index" aria-current="page">Docs</a>
+          <a class="nav-link" href="dashboard.html">Dashboard</a>
+          <a class="nav-link" href="mcp.html">MCP Page</a>
+        </nav>
+      </div>
+      <div class="header-controls">
+        <div class="theme-segmented" role="group" aria-label="Color theme">
+          <button type="button" class="theme-btn" data-theme-mode="system" aria-pressed="true">System</button>
+          <button type="button" class="theme-btn" data-theme-mode="light" aria-pressed="false">Light</button>
+          <button type="button" class="theme-btn" data-theme-mode="dark" aria-pressed="false">Dark</button>
+        </div>
+        <a class="btn btn-sm" href="zh-TW.html" lang="zh-Hant">繁體中文</a>
+        <button type="button" class="btn btn-sm btn-primary" id="ask-ai-trigger" aria-expanded="false">Ask AI</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <div class="doc-layout">
+      <aside class="doc-sidebar" id="doc-sidebar-nav" aria-label="Documentation topics">
+        <div style="font-weight:600;font-size:0.8125rem;padding:0.25rem 0.625rem;color:var(--fg-muted);">
+          English (EN)
+        </div>
+        <ul class="doc-sidebar-list" style="margin-bottom:0.875rem;">
+          <li><a class="doc-nav-item" href="doc.html?d=index" data-doc="index">Overview &amp; Quickstart</a></li>
+          <li><a class="doc-nav-item" href="doc.html?d=spec" data-doc="spec">MCP Pages Spec</a></li>
+          <li><a class="doc-nav-item" href="doc.html?d=protocol" data-doc="protocol">Relay Wire Protocol</a></li>
+          <li><a class="doc-nav-item" href="doc.html?d=security" data-doc="security">Security Model</a></li>
+        </ul>
+        <div style="font-weight:600;font-size:0.8125rem;padding:0.25rem 0.625rem;color:var(--fg-muted);border-top:1px solid var(--border-muted);padding-top:0.625rem;">
+          繁體中文 (zh-TW)
+        </div>
+        <ul class="doc-sidebar-list">
+          <li><a class="doc-nav-item" href="doc.html?d=zh-TW/index" data-doc="zh-TW/index" lang="zh-Hant">總覽與快速開始</a></li>
+          <li><a class="doc-nav-item" href="doc.html?d=zh-TW/spec" data-doc="zh-TW/spec" lang="zh-Hant">MCP Pages 規範</a></li>
+          <li><a class="doc-nav-item" href="doc.html?d=zh-TW/protocol" data-doc="zh-TW/protocol" lang="zh-Hant">轉送通訊協定</a></li>
+          <li><a class="doc-nav-item" href="doc.html?d=zh-TW/security" data-doc="zh-TW/security" lang="zh-Hant">安全模型與威脅</a></li>
+        </ul>
+      </aside>
+
+      <article id="doc-content" class="prose-measure" aria-live="polite">
+        <p class="mono">Loading documentation...</p>
+      </article>
+    </div>
+  </main>
+
+  <aside class="ask-ai-drawer" id="ask-ai-drawer" data-open="false" aria-hidden="true" aria-label="Ask AI Assistant">
+    <div class="ask-ai-header">
+      <strong>Ask AI (Local /v1 Demo)</strong>
+      <button type="button" class="btn btn-sm" id="ask-ai-close">Close</button>
+    </div>
+    <div class="ask-ai-messages" id="ask-ai-messages">
+      <div class="ask-ai-msg ask-ai-msg-assistant">
+        Connects to <code>http://127.0.0.1:8788/v1/chat/completions</code>. Ask any question about the MCP Pages specification.
+      </div>
+    </div>
+    <div class="ask-ai-footer">
+      <form id="ask-ai-form" class="form-row">
+        <input type="text" id="ask-ai-input" placeholder="Ask a question..." style="flex:1;min-width:0;" required />
+        <button type="submit" class="btn btn-primary btn-sm">Send</button>
+      </form>
+    </div>
+  </aside>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"
+    integrity="sha384-rbtjAdnIQE/aQJGEgXrVUlMibdfTSa4PQju4HDhN3sR2PmaKFzhEafuePsl9H/9I"
+    crossorigin="anonymous"
+  ></script>
+  <script>
+    (function () {
+      var baseUrl = new URL('./', window.location.href).href;
+      var nodes = document.querySelectorAll('[data-replace-base-url="true"]');
+      for (var i = 0; i < nodes.length; i++) {
+        nodes[i].textContent = nodes[i].textContent.replace(/https:\/\/<host>\/<org>\/<repo>\//g, baseUrl);
+      }
+
+      var currentMode = 'system';
+      try {
+        currentMode = localStorage.getItem('ai-proxy-theme') || 'system';
+      } catch (e) {}
+
+      var buttons = document.querySelectorAll('.theme-btn[data-theme-mode]');
+      function applyTheme(mode) {
+        currentMode = mode;
+        try {
+          localStorage.setItem('ai-proxy-theme', mode);
+        } catch (e) {}
+        if (mode === 'light' || mode === 'dark') {
+          document.documentElement.setAttribute('data-theme', mode);
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+        }
+        for (var j = 0; j < buttons.length; j++) {
+          var b = buttons[j];
+          b.setAttribute('aria-pressed', b.getAttribute('data-theme-mode') === mode ? 'true' : 'false');
+        }
+      }
+      applyTheme(currentMode);
+      for (var k = 0; k < buttons.length; k++) {
+        buttons[k].addEventListener('click', function (ev) {
+          applyTheme(ev.currentTarget.getAttribute('data-theme-mode') || 'system');
+        });
+      }
+
+      if (window.mermaid && typeof window.mermaid.initialize === 'function') {
+        window.mermaid.initialize({ startOnLoad: false, securityLevel: 'strict' });
+      }
+    })();
+  </script>
+  <script type="module">
+    import { initDocReader } from './site/doc-reader.mjs';
+    import { initAskAiDrawer } from './site/ask-ai.mjs';
+
+    initDocReader();
+    initAskAiDrawer({ lang: 'en' });
+  </script>
+</body>
+</html>
