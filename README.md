@@ -36,8 +36,8 @@ Browser Tab (https://example.github.io/docs/mcp.html running navigator.modelCont
 # 1. Start the local ai-proxy relay (listens on 127.0.0.1:8788)
 npx ai-proxy serve
 
-# 2. Register and allow an MCP Pages site in Claude Code
-npx ai-proxy add https://example.github.io/docs/mcp.html --name example-docs
+# 2. Register and allow this site's MCP page in Claude Code
+npx ai-proxy add https://yongjhih.github.io/ai-proxy/mcp --name ai-proxy-docs
 
 # 3. Open the authenticated local management dashboard
 npx ai-proxy open dashboard
@@ -102,7 +102,7 @@ npx ai-proxy devcontainer exec --dir . claude
 ```bash
 # Mode A: Run ai-proxy inside Docker (builds ai-proxy:local automatically if needed)
 npx ai-proxy-docker serve --port 8788
-npx ai-proxy-docker add https://example.github.io/docs/mcp.html --name example-docs
+npx ai-proxy-docker add https://yongjhih.github.io/ai-proxy/mcp --name ai-proxy-docs
 npx ai-proxy-docker doctor --dir .
 
 # Mode B: Wrap "docker run" so containerized AI tools (e.g. Claude Code) connect to host ai-proxy

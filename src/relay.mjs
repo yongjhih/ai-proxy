@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { normalizePageUrl, parseMcpRouteUrl } from '../web/url.mjs';
 import { MCP_PROTOCOL_VERSION } from '../web/dispatch.mjs';
-import { createStore, validateAllowToolSpec } from './store.mjs';
+import { createStore, validateAllowToolSpec, getEquivalentPageUrls } from './store.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ROOT_DIR = path.resolve(__dirname, '..');
@@ -149,22 +149,33 @@ export function createRelayServer({
     res.end(body);
   }
 
-  function getQueue(normalizedUrl) {
-    if (!pendingQueues.has(normalizedUrl)) {
-      pendingQueues.set(normalizedUrl, []);
+  function resolveQueueKey(normalizedUrl) {
+    const variants = getEquivalentPageUrls(normalizedUrl);
+    for (const v of variants) {
+      if (pendingQueues.has(v)) return v;
     }
-    return pendingQueues.get(normalizedUrl);
+    return variants[0];
+  }
+
+  function getQueue(normalizedUrl) {
+    const key = resolveQueueKey(normalizedUrl);
+    if (!pendingQueues.has(key)) {
+      pendingQueues.set(key, []);
+    }
+    return pendingQueues.get(key);
   }
 
   function getActiveSessionForUrl(normalizedUrl) {
-    const sid = urlToSessionId.get(normalizedUrl);
-    if (!sid) return null;
-    const ses = sessions.get(sid);
-    if (!ses) {
-      urlToSessionId.delete(normalizedUrl);
-      return null;
+    const variants = getEquivalentPageUrls(normalizedUrl);
+    for (const v of variants) {
+      const sid = urlToSessionId.get(v);
+      if (sid) {
+        const ses = sessions.get(sid);
+        if (ses) return ses;
+        urlToSessionId.delete(v);
+      }
     }
-    return ses;
+    return null;
   }
 
   function dispatchNextCallIfPossible(normalizedUrl) {
@@ -191,9 +202,12 @@ export function createRelayServer({
   async function ensureTabConnected(normalizedUrl) {
     if (getActiveSessionForUrl(normalizedUrl)) return;
 
-    if (tabLaunchers.has(normalizedUrl)) {
-      await tabLaunchers.get(normalizedUrl);
-      return;
+    const variants = getEquivalentPageUrls(normalizedUrl);
+    for (const v of variants) {
+      if (tabLaunchers.has(v)) {
+        await tabLaunchers.get(v);
+        return;
+      }
     }
 
     const launchTask = (async () => {
@@ -227,8 +241,9 @@ export function createRelayServer({
 
   function enqueueTabCall(normalizedUrl, rpc, req, res) {
     const queue = getQueue(normalizedUrl);
+    const eqUrls = getEquivalentPageUrls(normalizedUrl);
     const inFlightForUrl = Array.from(inFlightCalls.values()).filter(
-      (c) => c.normalizedUrl === normalizedUrl
+      (c) => eqUrls.includes(c.normalizedUrl)
     ).length;
 
     if (inFlightForUrl >= maxQueueSize) {
@@ -513,15 +528,18 @@ export function createRelayServer({
         return;
       }
 
-      // Replace any previous session for this URL
-      const prevSid = urlToSessionId.get(normalizedUrl);
-      if (prevSid && sessions.has(prevSid)) {
-        const prevSes = sessions.get(prevSid);
-        if (prevSes.parkedPoll) {
-          clearTimeout(prevSes.parkedPoll.timer);
-          sendJson(prevSes.parkedPoll.req, prevSes.parkedPoll.res, 204, {});
+      // Replace any previous session for this URL (including equivalent /mcp <-> /mcp.html)
+      for (const eqUrl of getEquivalentPageUrls(normalizedUrl)) {
+        const prevSid = urlToSessionId.get(eqUrl);
+        if (prevSid && sessions.has(prevSid)) {
+          const prevSes = sessions.get(prevSid);
+          if (prevSes.parkedPoll) {
+            clearTimeout(prevSes.parkedPoll.timer);
+            sendJson(prevSes.parkedPoll.req, prevSes.parkedPoll.res, 204, {});
+          }
+          sessions.delete(prevSid);
         }
-        sessions.delete(prevSid);
+        urlToSessionId.delete(eqUrl);
       }
 
       const sessionId = `ses_${crypto.randomBytes(10).toString('hex')}`;

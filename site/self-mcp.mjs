@@ -95,7 +95,7 @@ export async function initSelfMcpPage({
             sites: [
               {
                 name: 'ai-proxy-self',
-                url: `${siteBaseUrl}mcp.html`,
+                url: `${siteBaseUrl}mcp`,
                 note: 'Open with admin-key to list all sites registered in local ai-proxy.'
               }
             ]
@@ -136,12 +136,14 @@ export async function initSelfMcpPage({
               ? win.navigator.modelContext.listTools()
               : [];
           return {
-            url: `${siteBaseUrl}mcp.html`,
+            url: `${siteBaseUrl}mcp`,
             tools: selfTools
           };
         }
         const data = await fetchAdminJson('/admin/v1/sites');
-        const found = (data.sites || []).find((s) => s.url === url || s.name === url);
+        const found = (data.sites || []).find(
+          (s) => s.url === url || s.name === url || s.url === `${url}.html` || `${s.url}.html` === url
+        );
         if (!found) {
           throw new Error(`Site not found: ${url}`);
         }
@@ -204,7 +206,7 @@ export async function initSelfMcpPage({
         properties: {
           url: {
             type: 'string',
-            description: 'Full URL to the site MCP page (e.g. https://example.github.io/docs/mcp.html)'
+            description: 'Full URL to the site MCP page (e.g. https://example.github.io/docs/mcp)'
           },
           name: {
             type: 'string',
