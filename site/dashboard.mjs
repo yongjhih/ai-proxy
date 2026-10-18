@@ -80,19 +80,24 @@ export async function mountAdminDashboard({
         <div class="primer-box-row">
           <p>
             This tab does not hold an admin key in <code>history.state</code>. Click <strong>Connect</strong> to ask your local
-            <code>ai-proxy</code> to open an authenticated dashboard tab.
+            <code>ai-proxy</code> to open an authenticated dashboard tab, or paste your <code>admin-key</code> below to manage MCP sites directly in this tab:
           </p>
           <div class="form-row">
             <button type="button" class="btn btn-primary" id="btn-connect-dashboard">
               Connect (接上本機 ai-proxy)
             </button>
           </div>
+          <form id="form-manual-admin-key" class="form-row" style="margin-top:0.75rem;">
+            <input type="password" name="adminKey" placeholder="adm_... (optional: paste admin-key to unlock this tab)" style="flex:1;min-width:14rem;" />
+            <button type="submit" class="btn btn-sm" id="btn-unlock-dashboard">Unlock This Tab</button>
+          </form>
           <div id="connect-feedback" style="margin-top:0.75rem;"></div>
         </div>
       </div>
     `;
 
     const connectBtn = container.querySelector('#btn-connect-dashboard');
+    const manualForm = container.querySelector('#form-manual-admin-key');
     const feedbackEl = container.querySelector('#connect-feedback');
     if (connectBtn) {
       connectBtn.addEventListener('click', async () => {
@@ -101,7 +106,11 @@ export async function mountAdminDashboard({
           feedbackEl.innerHTML = '<span class="mono">Requesting /admin/v1/open-dashboard...</span>';
         }
         try {
-          await adminFetch('/admin/v1/open-dashboard', { method: 'POST', body: '{}' });
+          const pageUrl = win && win.location ? win.location.href : undefined;
+          await adminFetch('/admin/v1/open-dashboard', {
+            method: 'POST',
+            body: JSON.stringify({ pageUrl })
+          });
           if (feedbackEl) {
             feedbackEl.innerHTML =
               '<div class="flash-banner">Authenticated dashboard tab opened by local <code>ai-proxy</code>.</div>';
@@ -115,6 +124,26 @@ export async function mountAdminDashboard({
         } finally {
           connectBtn.disabled = false;
         }
+      });
+    }
+    if (manualForm) {
+      manualForm.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const fd = new FormData(manualForm);
+        const enteredKey = String(fd.get('adminKey') || '').trim();
+        if (!enteredKey) return;
+        adminKey = enteredKey;
+        if (win && win.history && typeof win.history.replaceState === 'function') {
+          const currentState =
+            win.history.state && typeof win.history.state === 'object' ? { ...win.history.state } : {};
+          currentState.__aiProxy = {
+            ...(currentState.__aiProxy || {}),
+            adminKey: enteredKey,
+            mcpPort
+          };
+          win.history.replaceState(currentState, '', win.location.pathname + win.location.search);
+        }
+        await refreshDashboard();
       });
     }
   }

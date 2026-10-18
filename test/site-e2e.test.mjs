@@ -216,7 +216,15 @@ test(
       const indexQuickstart = await page.evalJs(
         `document.querySelector('[data-replace-base-url="true"]').textContent`
       );
-      assert.ok(indexQuickstart.includes(`${baseUrl}/mcp --name ai-proxy-docs`), 'index base URL replaced');
+      assert.ok(indexQuickstart.includes(`${baseUrl}/mcp --name ai-proxy`), 'index base URL replaced');
+      assert.ok(
+        await page.evalJs(`Boolean(document.querySelector('#home-dashboard-root #btn-connect-dashboard'))`),
+        'Home page renders live ai-proxy dashboard panel'
+      );
+      assert.ok(
+        await page.evalJs(`Boolean(document.querySelector('pre code .syn-cmd'))`),
+        'Code blocks have syntax highlighting applied'
+      );
 
       // Test theme toggle buttons and dark/light Mermaid re-rendering on root /
       await page.evalJs(`document.querySelector('[data-theme-mode="dark"]').click()`);
