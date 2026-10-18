@@ -361,7 +361,7 @@ export function createRelayServer({
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
     res.setHeader(
       'Access-Control-Allow-Headers',
-      'Content-Type, Authorization, X-AI-Proxy-Confirm'
+      'Content-Type, Authorization, X-AI-Proxy-Confirm, X-Session-ID, X-Conversation-ID'
     );
     res.setHeader('Access-Control-Allow-Private-Network', 'true');
     res.setHeader('Access-Control-Max-Age', '600');
