@@ -178,7 +178,7 @@ export function formatAssistantMarkdown(markdown) {
 
 export function generateClientAssistantReply(promptText, lang = 'zh-TW') {
   const text = String(promptText || '').trim();
-  const isZh = lang === 'zh-TW';
+  const isZh = lang === 'zh-TW' || /[\u4e00-\u9fff]/.test(text);
 
   // 1. Add MCP / site intent
   const addMatch =
@@ -1374,8 +1374,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
       const res = await fetch(`${endpoint}/v1/chat/completions`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-Session-ID': askSessionId
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           model: 'local-default',
@@ -1425,7 +1424,7 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
       messageHistory.push({ role: 'assistant', content: sanitizeForStorage(replyContent) });
       saveStoredHistory(messageHistory);
       ensureScrollBottom(messagesEl, true);
-    } catch {
+    } catch (err) {
       if (currentAbortController && currentAbortController.signal && currentAbortController.signal.aborted) {
         const stoppedText = lang === 'zh-TW' ? '⏹️ 已停止思考。' : '⏹️ Thinking stopped.';
         renderAssistantBubble(pendingEl, stoppedText);
@@ -1435,9 +1434,13 @@ export function initAskAiDrawer({ lang = 'en', win = globalThis.window } = {}) {
         return;
       }
 
+      if (win && win.console && typeof win.console.warn === 'function') {
+        win.console.warn('[Ask AI] Failed to fetch /v1/chat/completions:', err);
+      }
+
       const clientAnswer = generateClientAssistantReply(prompt, lang);
       const offlineNote =
-        lang === 'zh-TW'
+        lang === 'zh-TW' || /[\u4e00-\u9fff]/.test(prompt)
           ? `${clientAnswer}\n\n> 💡 本機 ai-proxy 未連線或目前 Origin 尚未授權。\n\n[🔌 接上本機 ai-proxy (Connect)](action:connect)`
           : `${clientAnswer}\n\n> 💡 Local ai-proxy is not connected or Origin is unauthorized.\n\n[🔌 Connect to local ai-proxy](action:connect)`;
       renderAssistantBubble(pendingEl, offlineNote);
