@@ -379,22 +379,18 @@ export async function mountAdminDashboard({
             <td><code>${escapeHtml(s.name)}</code></td>
             <td><a href="${escapeHtml(s.url)}" target="_blank" rel="noopener">${escapeHtml(s.url)}</a></td>
             <td>
-              <span class="badge ${s.connected ? 'badge-success' : 'badge-neutral'}">
-                ${s.connected ? `Connected (${escapeHtml(s.sessionId || '')})` : 'Idle / Disconnected'}
-              </span>
+              <span class="status-item ${s.connected ? 'is-on' : 'is-off'}"${
+                s.connected && s.sessionId ? ` title="Session ${escapeHtml(s.sessionId)}"` : ''
+              }>${s.connected ? 'Connected' : 'Idle'}</span>
             </td>
             <td>
-              <div style="display:flex;flex-direction:column;gap:0.25rem;">
-                <span class="badge ${s.write !== false ? 'badge-success' : 'badge-readonly'}" title="${s.write !== false ? 'Read/Write allowed' : 'Read-only mode'}">
-                  ${s.write !== false ? 'Read/Write' : 'Read-Only'}
-                </span>
+              <div class="status-stack">
+                <span class="status-item ${s.write !== false ? 'is-on' : 'is-warn'}" title="${s.write !== false ? 'Read/Write allowed' : 'Read-only mode'}">${s.write !== false ? 'Read/Write' : 'Read-only'}</span>
                 ${
                   siteOrigin
-                    ? `<span class="badge ${isOriginAllowed ? 'badge-success' : 'badge-neutral'}" title="${
+                    ? `<span class="status-item ${isOriginAllowed ? 'is-on' : 'is-off'}" title="${
                         isOriginAllowed ? 'Origin authorized on /v1' : 'Origin not authorized on /v1'
-                      }">
-                    ${isOriginAllowed ? 'Origin: Allowed' : 'Origin: Denied'}
-                  </span>`
+                      }">${isOriginAllowed ? 'Origin allowed' : 'Origin denied'}</span>`
                     : ''
                 }
               </div>
