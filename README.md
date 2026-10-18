@@ -74,9 +74,40 @@ All repositories under `https://<user>.github.io/<repo>/` share **one browser Or
 - [`skills/mcp-pages/SKILL.md`](./skills/mcp-pages/SKILL.md): Instructions for AI coding agents to add a compliant MCP Page (`mcp.html` + `web/*.mjs`) to any static site.
 - [`skills/ai-proxy/SKILL.md`](./skills/ai-proxy/SKILL.md): Instructions for AI coding agents to operate and manage `ai-proxy`.
 
+## Devcontainer & Docker Wrapper CLI
+
+### 1. `.devcontainer` Support (`ai-proxy devcontainer`)
+
+This repository includes a ready-to-use [`.devcontainer/devcontainer.json`](./.devcontainer/devcontainer.json) and [`.devcontainer/Dockerfile`](./.devcontainer/Dockerfile) that forwards port `8788`, maps `host.docker.internal`, and sets `AI_PROXY_HOST=host.docker.internal` so AI tools running inside a Dev Container or Codespace can talk to your host browser's `ai-proxy` relay.
+
+You can also initialize or run `.devcontainer` in any project via the CLI:
+
+```bash
+# Generate or merge .devcontainer/devcontainer.json in any project
+npx ai-proxy devcontainer init --dir .
+
+# Launch or exec into a devcontainer with ai-proxy environment variables wired
+npx ai-proxy devcontainer up --dir .
+npx ai-proxy devcontainer exec --dir . claude
+```
+
+### 2. `docker-wrapper` CLI (`ai-proxy-docker` / `docker-wrapper` / `ai-proxy docker`)
+
+```bash
+# Mode A: Run ai-proxy inside Docker (builds ai-proxy:local automatically if needed)
+npx ai-proxy-docker serve --port 8788
+npx ai-proxy-docker add https://example.github.io/docs/mcp.html --name example-docs
+npx ai-proxy-docker doctor --dir .
+
+# Mode B: Wrap "docker run" so containerized AI tools (e.g. Claude Code) connect to host ai-proxy
+npx ai-proxy-docker run -it my-agent-image claude
+# Or via the main CLI:
+npx ai-proxy docker-wrapper run -it my-agent-image claude
+```
+
 ## Running Tests
 
-Zero npm dependencies are required. Run the full unit, integration, security baseline, and headless browser E2E test suite with Node.js (`>=22`):
+Zero npm dependencies are required. Run the full unit, integration, security baseline, devcontainer/docker-wrapper, and headless browser E2E test suite with Node.js (`>=22`):
 
 ```bash
 npm test

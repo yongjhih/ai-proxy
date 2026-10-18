@@ -6,6 +6,7 @@ import { execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createStore, validateAllowToolSpec } from './store.mjs';
 import { createRelayServer, defaultOpenBrowser } from './relay.mjs';
+import { runDockerWrapper, runDevcontainerSubcommand } from './docker.mjs';
 import { normalizePageUrl } from '../web/url.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -76,9 +77,10 @@ function printWarningsToStderr(store, stderr) {
   }
 }
 
-export async function registerSiteInClaude(site, port, env = process.env) {
+export async function registerSiteInClaude(site, port, env = process.env, host = '127.0.0.1') {
   const claudeBin = env.AI_PROXY_CLAUDE_BIN || 'claude';
-  const endpoint = `http://127.0.0.1:${port}/mcp?url=${encodeURIComponent(site.url)}`;
+  const effectiveHost = env.AI_PROXY_HOST || host || '127.0.0.1';
+  const endpoint = `http://${effectiveHost}:${port}/mcp?url=${encodeURIComponent(site.url)}`;
   await runCommand(claudeBin, ['mcp', 'add', '--transport', 'http', site.name, endpoint], env);
   return endpoint;
 }
@@ -97,6 +99,14 @@ export async function runCli(
     stderr = process.stderr
   } = {}
 ) {
+  const firstArg = argv[0];
+  if (firstArg === 'docker' || firstArg === 'docker-wrapper') {
+    return runDockerWrapper(argv.slice(1), { env, stdout, stderr });
+  }
+  if (firstArg === 'devcontainer') {
+    return runDevcontainerSubcommand(argv.slice(1), { env, stdout, stderr });
+  }
+
   const { positionals, flags } = parseFlags(argv);
   const subcommand = positionals[0];
 
@@ -118,6 +128,9 @@ Commands:
   keys rotate [<page_url>|--all|--admin]
   vendor <target_dir>
   install --login [--port 8788]
+  docker <subcommand|run> [args...]
+  docker-wrapper <subcommand|run> [args...]
+  devcontainer [init|up|exec] [--dir <dir>] [--port 8788]
 `
     );
     return subcommand === 'help' || flags.help ? 0 : 2;
@@ -126,8 +139,14 @@ Commands:
   const configDir =
     env.AI_PROXY_HOME || path.join(env.HOME || os.homedir(), '.config', 'ai-proxy');
   const store = createStore({ configDir });
-  const port = Number.isInteger(flags.port) && flags.port >= 0 ? flags.port : 8788;
-  const host = flags.host || '127.0.0.1';
+  const envPort = Number.parseInt(env.AI_PROXY_PORT || '', 10);
+  const port =
+    Number.isInteger(flags.port) && flags.port >= 0
+      ? flags.port
+      : Number.isInteger(envPort) && envPort > 0
+        ? envPort
+        : 8788;
+  const host = flags.host || env.AI_PROXY_HOST || '127.0.0.1';
   const openBrowser =
     env.AI_PROXY_NO_BROWSER === '1' ? async () => true : defaultOpenBrowser;
 
@@ -238,7 +257,7 @@ Commands:
       const site = store.addSite({ url: urlArg, name: flags.name });
       let mcpEndpoint = `http://${host}:${port}/mcp?url=${encodeURIComponent(site.url)}`;
       try {
-        mcpEndpoint = await registerSiteInClaude(site, port, env);
+        mcpEndpoint = await registerSiteInClaude(site, port, env, host);
       } catch (err) {
         stderr.write(`Warning: claude mcp add failed (${err.message}); site still saved locally.\n`);
       }

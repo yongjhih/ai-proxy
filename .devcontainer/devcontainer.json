@@ -1,6 +1,9 @@
 {
   "name": "ai-proxy · MCP Pages Development Environment",
-  "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
   "forwardPorts": [8788],
   "portsAttributes": {
     "8788": {
@@ -8,7 +11,19 @@
       "onAutoForward": "notify"
     }
   },
-  "postCreateCommand": "node --version && npm test",
+  "runArgs": [
+    "--add-host=host.docker.internal:host-gateway"
+  ],
+  "containerEnv": {
+    "AI_PROXY_HOST": "host.docker.internal",
+    "AI_PROXY_PORT": "8788",
+    "AI_PROXY_URL": "http://host.docker.internal:8788",
+    "AI_PROXY_HOME": "/home/node/.config/ai-proxy"
+  },
+  "mounts": [
+    "source=${localEnv:HOME}/.config/ai-proxy,target=/home/node/.config/ai-proxy,type=bind,consistency=cached"
+  ],
+  "postCreateCommand": "sh .devcontainer/post-create.sh",
   "customizations": {
     "vscode": {
       "settings": {

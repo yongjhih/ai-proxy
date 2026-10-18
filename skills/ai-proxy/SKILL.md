@@ -53,6 +53,16 @@ npx ai-proxy doctor --dir .
 
 # Install background login service (macOS LaunchAgent or Linux systemd user unit)
 npx ai-proxy install --login
+
+# Initialize or run .devcontainer with host.docker.internal ai-proxy bridge
+npx ai-proxy devcontainer init --dir .
+npx ai-proxy devcontainer up --dir .
+npx ai-proxy devcontainer exec --dir . claude
+
+# Docker-wrapper CLI: run ai-proxy in Docker or wrap "docker run" with host ai-proxy env
+npx ai-proxy-docker serve --port 8788
+npx ai-proxy-docker run -it my-agent-image claude
+npx ai-proxy docker-wrapper --dry-run serve
 ```
 
 ## 2. Security & Operational Rules
