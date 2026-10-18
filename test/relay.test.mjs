@@ -405,3 +405,26 @@ test('Relay enforces site read/write permissions: defaults to true, toggleable, 
   assert.equal(permRes2.site.write, true);
 });
 
+test('Relay addSite supports allowOrigin and allowPrefix options', async (t) => {
+  const configDir = makeTempConfigDir();
+  const store = createStore({ configDir });
+
+  // 1. allowOrigin: false does NOT add the origin to allowedOrigins
+  store.addSite({
+    url: 'https://untrusted.example.com/project/mcp',
+    allowOrigin: false
+  });
+  assert.ok(!store.getSnapshot().allowedOrigins.includes('https://untrusted.example.com'));
+  assert.ok(store.getSnapshot().allowlist.includes('https://untrusted.example.com/project/mcp'));
+
+  // 2. allowOrigin: true (default) DOES add the origin
+  store.addSite({
+    url: 'https://trusted.example.com/project/mcp',
+    allowOrigin: true
+  });
+  assert.ok(store.getSnapshot().allowedOrigins.includes('https://trusted.example.com'));
+
+  fs.rmSync(configDir, { recursive: true, force: true });
+});
+
+

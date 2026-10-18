@@ -65,6 +65,10 @@ function parseFlags(args) {
       flags.readOnly = true;
     } else if (arg === '--write') {
       flags.write = true;
+    } else if (arg === '--no-origin') {
+      flags.noOrigin = true;
+    } else if (arg === '--no-prefix') {
+      flags.noPrefix = true;
     } else if (arg === '--help' || arg === '-h') {
       flags.help = true;
     } else {
@@ -121,7 +125,7 @@ export async function runCli(
 Commands:
   serve [--port 8788] [--allow-tool mcp__<server>__<tool>]
   mcp --url <page_url> [--port 8788]
-  add <page_url> [--name <slug>] [--read-only] [--port 8788]
+  add <page_url> [--name <slug>] [--read-only] [--no-origin] [--no-prefix] [--port 8788]
   remove <page_url_or_name>
   allow <url_prefix>
   allow-origin <origin|*> [--ttl <seconds>]
@@ -265,7 +269,9 @@ Commands:
       const site = store.addSite({
         url: targetUrl,
         name: flags.name,
-        write: !flags.readOnly
+        write: !flags.readOnly,
+        allowOrigin: !flags.noOrigin,
+        allowPrefix: !flags.noPrefix
       });
       let mcpEndpoint = `http://${host}:${port}/mcp?url=${encodeURIComponent(site.url)}`;
       try {

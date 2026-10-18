@@ -1207,7 +1207,9 @@ export function createRelayServer({
         site = activeStore.addSite({
           url: targetUrl,
           name: body.name,
-          write: body.write !== undefined ? Boolean(body.write) : true
+          write: body.write !== undefined ? Boolean(body.write) : true,
+          allowOrigin: body.allowOrigin !== undefined ? Boolean(body.allowOrigin) : true,
+          allowPrefix: body.allowPrefix !== undefined ? Boolean(body.allowPrefix) : true
         });
       } catch (err) {
         sendJson(req, res, 400, { error: err.message });
