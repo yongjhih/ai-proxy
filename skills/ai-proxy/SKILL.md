@@ -54,6 +54,14 @@ npx ai-proxy doctor --dir .
 # Install background login service (macOS LaunchAgent or Linux systemd user unit)
 npx ai-proxy install --login
 
+# List and install agent skills (skills/ai-proxy, skills/mcp-pages)
+npx ai-proxy skills list
+npx ai-proxy skills install
+npx ai-proxy skills install --target claude
+npx ai-proxy skills install --target antigravity
+npx ai-proxy skills install --target agents
+npx ai-proxy skills install --target cursor
+
 # Initialize or run .devcontainer with host.docker.internal ai-proxy bridge
 npx ai-proxy devcontainer init --dir .
 npx ai-proxy devcontainer up --dir .
