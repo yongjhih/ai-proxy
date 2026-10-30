@@ -366,4 +366,45 @@ test('CLI subcommands: allow, allow-origin, deny, add, sites, remove, vendor, ke
   assert.equal(lines[0].id, 1);
   assert.equal(lines[0].result.protocolVersion, '2025-11-25');
   assert.equal(lines[1].id, 2);
+
+  // 12. skills list and skills install
+  const skillsListRes = await execCli(['skills', 'list'], env);
+  assert.equal(skillsListRes.code, 0);
+  const skillsListData = JSON.parse(skillsListRes.stdout);
+  assert.equal(skillsListData.ok, true);
+  assert.equal(skillsListData.action, 'list');
+  assert.ok(skillsListData.skills.some((s) => s.name === 'ai-proxy'));
+  assert.ok(skillsListData.skills.some((s) => s.name === 'mcp-pages'));
+
+  // Single skill filter
+  const singleSkillRes = await execCli(['skills', 'ai-proxy'], env);
+  assert.equal(singleSkillRes.code, 0);
+  const singleSkillData = JSON.parse(singleSkillRes.stdout);
+  assert.equal(singleSkillData.skills.length, 1);
+  assert.equal(singleSkillData.skills[0].name, 'ai-proxy');
+
+  // Install to custom dir
+  const customSkillsDir = path.join(env.root, 'custom-skills');
+  const installCustomRes = await execCli(['skills', 'install', '--dir', customSkillsDir], env);
+  assert.equal(installCustomRes.code, 0);
+  const installCustomData = JSON.parse(installCustomRes.stdout);
+  assert.equal(installCustomData.ok, true);
+  assert.equal(installCustomData.action, 'install');
+  assert.ok(fs.existsSync(path.join(customSkillsDir, 'ai-proxy', 'SKILL.md')));
+  assert.ok(fs.existsSync(path.join(customSkillsDir, 'mcp-pages', 'SKILL.md')));
+
+  // Install single skill to claude target
+  const installClaudeRes = await execCli(['skills', 'install', 'ai-proxy', '--target', 'claude'], env);
+  assert.equal(installClaudeRes.code, 0);
+  const claudeSkillDir = path.join(env.homeDir, '.claude', 'skills', 'ai-proxy');
+  assert.ok(fs.existsSync(path.join(claudeSkillDir, 'SKILL.md')));
+
+  // Install with --copy to antigravity target
+  const installCopyRes = await execCli(['skills', 'install', '--copy', '--target', 'antigravity'], env);
+  assert.equal(installCopyRes.code, 0);
+  const geminiSkillDir = path.join(env.homeDir, '.gemini', 'skills', 'ai-proxy');
+  assert.ok(fs.existsSync(path.join(geminiSkillDir, 'SKILL.md')));
+  const stat = fs.lstatSync(geminiSkillDir);
+  assert.equal(stat.isSymbolicLink(), false);
 });
+

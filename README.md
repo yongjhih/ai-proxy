@@ -85,8 +85,32 @@ All repositories under `https://<user>.github.io/<repo>/` share **one browser Or
 
 ## Agent Skills
 
+`ai-proxy` provides built-in agent skills for AI coding assistants (Claude Code, Antigravity/Gemini, Codex/Agents, Cursor, Windsurf):
+
 - [`skills/mcp-pages/SKILL.md`](./skills/mcp-pages/SKILL.md): Instructions for AI coding agents to add a compliant MCP Page (`mcp.html` + `web/*.mjs`) to any static site.
 - [`skills/ai-proxy/SKILL.md`](./skills/ai-proxy/SKILL.md): Instructions for AI coding agents to operate and manage `ai-proxy`.
+
+### Install Skills
+
+Install skills directly into your AI coding agent's configuration:
+
+```bash
+# List available skills
+npx ai-proxy skills list
+
+# Install into all supported agent directories (~/.claude/skills, ~/.gemini/skills, ~/.agents/skills)
+npx ai-proxy skills install
+
+# Install for a specific agent target
+npx ai-proxy skills install --target claude       # ~/.claude/skills/
+npx ai-proxy skills install --target antigravity   # ~/.gemini/skills/
+npx ai-proxy skills install --target agents        # ~/.agents/skills/
+npx ai-proxy skills install --target cursor        # .cursor/skills/
+
+# Install to a custom directory or copy files instead of symlinking
+npx ai-proxy skills install --dir ./custom-skills/
+npx ai-proxy skills install --copy
+```
 
 ## Devcontainer & Docker Wrapper CLI
 

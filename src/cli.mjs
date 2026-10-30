@@ -48,6 +48,10 @@ function parseFlags(args) {
       flags.ttl = Number.parseFloat(args[++i] || '');
     } else if (arg === '--dir') {
       flags.dir = args[++i];
+    } else if (arg === '--target') {
+      flags.target = args[++i];
+    } else if (arg === '--copy') {
+      flags.copy = true;
     } else if (arg === '--out' || arg === '-o') {
       flags.out = args[++i];
     } else if (arg === '--allow-tool') {
@@ -111,6 +115,103 @@ export async function removeSiteFromClaude(name, env = process.env) {
   await runCommand(claudeBin, ['mcp', 'remove', name], env);
 }
 
+export function loadAvailableSkills(skillsRoot = path.join(REPO_ROOT, 'skills')) {
+  if (!fs.existsSync(skillsRoot)) return [];
+  const entries = fs.readdirSync(skillsRoot, { withFileTypes: true });
+  const list = [];
+  for (const ent of entries) {
+    if (!ent.isDirectory()) continue;
+    const skillDir = path.join(skillsRoot, ent.name);
+    const skillFile = path.join(skillDir, 'SKILL.md');
+    if (!fs.existsSync(skillFile)) continue;
+    const content = fs.readFileSync(skillFile, 'utf8');
+    let name = ent.name;
+    let description = '';
+    const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+    if (match) {
+      const nameMatch = match[1].match(/^name:\s*(.+)$/m);
+      if (nameMatch) name = nameMatch[1].trim();
+      const descMatch = match[1].match(/^description:\s*(.+)$/m);
+      if (descMatch) description = descMatch[1].trim();
+    }
+    list.push({
+      name,
+      description,
+      dir: skillDir,
+      skillFile
+    });
+  }
+  return list;
+}
+
+export function resolveSkillTargetDirs({ target = 'all', customDir, home = os.homedir(), cwd = process.cwd() } = {}) {
+  if (customDir) {
+    return [path.resolve(cwd, customDir)];
+  }
+  const t = String(target || 'all').toLowerCase();
+  switch (t) {
+    case 'claude':
+    case 'claudecode':
+    case 'claude-code':
+      return [path.join(home, '.claude', 'skills')];
+    case 'antigravity':
+    case 'agy':
+    case 'gemini':
+      return [path.join(home, '.gemini', 'skills')];
+    case 'agents':
+    case 'codex':
+      return [path.join(home, '.agents', 'skills')];
+    case 'cursor':
+      return [path.join(cwd, '.cursor', 'skills')];
+    case 'windsurf':
+      return [path.join(cwd, '.windsurf', 'skills')];
+    case 'all':
+    default:
+      return [
+        path.join(home, '.claude', 'skills'),
+        path.join(home, '.gemini', 'skills'),
+        path.join(home, '.agents', 'skills')
+      ];
+  }
+}
+
+export function installSkillToDir(skill, targetDir, { preferCopy = false } = {}) {
+  fs.mkdirSync(targetDir, { recursive: true });
+  const dest = path.join(targetDir, skill.name);
+  if (fs.existsSync(dest)) {
+    try {
+      const stat = fs.lstatSync(dest);
+      if (stat.isSymbolicLink()) {
+        fs.unlinkSync(dest);
+      } else {
+        fs.rmSync(dest, { recursive: true, force: true });
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  let method = preferCopy ? 'copy' : 'symlink';
+  if (!preferCopy) {
+    try {
+      const symlinkType = process.platform === 'win32' ? 'junction' : 'dir';
+      fs.symlinkSync(skill.dir, dest, symlinkType);
+    } catch {
+      method = 'copy';
+      fs.cpSync(skill.dir, dest, { recursive: true });
+    }
+  } else {
+    fs.cpSync(skill.dir, dest, { recursive: true });
+  }
+
+  return {
+    skill: skill.name,
+    targetDir,
+    dest,
+    method
+  };
+}
+
 export async function runCli(
   argv = process.argv.slice(2),
   {
@@ -149,6 +250,7 @@ Commands:
   keys rotate [<page_url>|--all|--admin]
   vendor <target_dir>
   install --login [--port 8788]
+  skills [install|list] [<skill_name>] [--target <claude|antigravity|agents|cursor|all>] [--dir <dir>] [--copy]
   docker <subcommand|run> [args...]
   docker-wrapper <subcommand|run> [args...]
   devcontainer [init|up|exec] [--dir <dir>] [--port 8788]
@@ -560,6 +662,101 @@ WantedBy=default.target
         })}\n`
       );
       return 0;
+    }
+
+    if (subcommand === 'skills') {
+      const availableSkills = loadAvailableSkills();
+      if (availableSkills.length === 0) {
+        stderr.write('Error: no skills found in skills/ directory\n');
+        return 1;
+      }
+
+      let action = 'list';
+      let skillNameFilter = null;
+
+      const pos1 = positionals[1];
+      const pos2 = positionals[2];
+
+      if (pos1 === 'install') {
+        action = 'install';
+        skillNameFilter = pos2 || null;
+      } else if (pos1 === 'list') {
+        action = 'list';
+        skillNameFilter = pos2 || null;
+      } else if (pos1) {
+        if (availableSkills.some((s) => s.name === pos1)) {
+          action = 'list';
+          skillNameFilter = pos1;
+        } else {
+          stderr.write(
+            `Unknown skills action: ${pos1}\nUsage: ai-proxy skills [install|list] [<skill_name>] [--target <claude|antigravity|agents|cursor|all>] [--dir <dir>] [--copy]\n`
+          );
+          return 2;
+        }
+      }
+
+      const selectedSkills = skillNameFilter
+        ? availableSkills.filter((s) => s.name === skillNameFilter)
+        : availableSkills;
+
+      if (selectedSkills.length === 0) {
+        stderr.write(
+          `Error: skill "${skillNameFilter}" not found. Available: ${availableSkills.map((s) => s.name).join(', ')}\n`
+        );
+        return 1;
+      }
+
+      if (action === 'list') {
+        stderr.write(`Available ai-proxy skills (${selectedSkills.length}):\n`);
+        for (const s of selectedSkills) {
+          stderr.write(`  - ${s.name}: ${s.description}\n`);
+        }
+        stdout.write(
+          `${JSON.stringify(
+            {
+              ok: true,
+              action: 'list',
+              skills: selectedSkills
+            },
+            null,
+            2
+          )}\n`
+        );
+        return 0;
+      }
+
+      if (action === 'install') {
+        const home = env.HOME || os.homedir();
+        const targetDirs = resolveSkillTargetDirs({
+          target: flags.target,
+          customDir: flags.dir,
+          home,
+          cwd: process.cwd()
+        });
+
+        const installed = [];
+        for (const targetDir of targetDirs) {
+          for (const s of selectedSkills) {
+            const res = installSkillToDir(s, targetDir, { preferCopy: flags.copy });
+            installed.push(res);
+            stderr.write(`Installed skill ${s.name} -> ${res.dest} (${res.method})\n`);
+          }
+        }
+
+        stdout.write(
+          `${JSON.stringify(
+            {
+              ok: true,
+              action: 'install',
+              target: flags.target || (flags.dir ? 'custom' : 'all'),
+              installed
+            },
+            null,
+            2
+          )}\n`
+        );
+        return 0;
+      }
     }
 
     stderr.write(`Unknown command: ${subcommand}\n`);

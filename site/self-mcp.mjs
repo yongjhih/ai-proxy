@@ -577,6 +577,7 @@ export async function initSelfMcpPage({
               { cmd: 'ai-proxy vendor <dir>', desc: isZh ? '複製前端 WebMCP 模組 (web/*.mjs) 至專案目錄' : 'Vendor WebMCP client modules into target directory' },
               { cmd: 'ai-proxy doctor [--dir <dir>]', desc: isZh ? '診斷靜態站點之 MCP 設定與安全合規性' : 'Diagnose site MCP configuration and security compliance' },
               { cmd: 'ai-proxy install --login', desc: isZh ? '安裝為作業系統開機啟動服務 (Launchd / Systemd)' : 'Install as OS login background service (Launchd / Systemd)' },
+              { cmd: 'ai-proxy skills [install|list] [--target <all|claude|antigravity|agents|cursor>]', desc: isZh ? '檢視或安裝 AI 代理技能 (skills/ai-proxy, skills/mcp-pages)' : 'List or install AI agent skills (skills/ai-proxy, skills/mcp-pages)' },
               { cmd: 'ai-proxy docker [run|serve|...]', desc: isZh ? '以容器化環境執行 ai-proxy' : 'Run ai-proxy inside Docker container' }
             ]
           },
@@ -588,23 +589,44 @@ export async function initSelfMcpPage({
               : 'You can register multiple sites by executing claude mcp add for each site, or use the ai-proxy dashboard which auto-registers with Claude Code.'
           },
           skills: {
-            name: 'MCP Pages Agent Skill (skills/mcp-pages/SKILL.md)',
-            file: 'skills/mcp-pages/SKILL.md',
-            description: isZh
-              ? '提供給 AI Coding Assistant (Antigravity, Cursor, Windsurf) 的技能定義檔，教導 AI 如何為現有靜態網頁自動建立 mcp.html 與暴露 WebMCP 工具。'
-              : 'Skill definition file for AI coding assistants (Antigravity, Cursor, Windsurf) guiding agents to author static MCP pages with vendored WebMCP modules.',
+            name: 'Agent Skills (skills/ai-proxy, skills/mcp-pages)',
+            installCommand: 'npx ai-proxy skills install',
+            availableSkills: [
+              {
+                name: 'ai-proxy',
+                file: 'skills/ai-proxy/SKILL.md',
+                description: isZh
+                  ? '本機中繼器管理技能，引導 AI 操作 serve、add、allow、allow-origin、open、doctor、vendor 等完整指令。'
+                  : 'Operate, configure, and troubleshoot the local ai-proxy relay for MCP Pages.'
+              },
+              {
+                name: 'mcp-pages',
+                file: 'skills/mcp-pages/SKILL.md',
+                description: isZh
+                  ? '靜態站點 WebMCP 開發技能，教導 AI 如何為現有靜態網頁自動建立 mcp.html、vendor 模組與暴露 WebMCP 工具。'
+                  : 'Add a compliant MCP Pages endpoint to any static website or GitHub Pages repo.'
+              }
+            ],
             targets: {
+              claude: {
+                location: '~/.claude/skills/',
+                install: 'npx ai-proxy skills install --target claude'
+              },
               antigravity: {
-                location: '~/.gemini/skills/mcp-pages/SKILL.md 或專案 .gemini/skills/mcp-pages/SKILL.md',
-                how: '複製專案 skills/mcp-pages/ 到 ~/.gemini/skills/mcp-pages/ 目錄。'
+                location: '~/.gemini/skills/',
+                install: 'npx ai-proxy skills install --target antigravity'
+              },
+              agents: {
+                location: '~/.agents/skills/',
+                install: 'npx ai-proxy skills install --target agents'
               },
               cursor: {
-                location: '.cursor/skills/mcp-pages/SKILL.md 或 .cursorrules',
-                how: '將 skills/mcp-pages/SKILL.md 內容引用或放置於 .cursor/skills/mcp-pages/。'
+                location: '.cursor/skills/',
+                install: 'npx ai-proxy skills install --target cursor'
               },
-              windsurf: {
-                location: '.windsurf/skills/mcp-pages/SKILL.md',
-                how: '複製 skills/mcp-pages/SKILL.md 至專案 .windsurf/skills/mcp-pages/。'
+              all: {
+                location: 'All supported assistant directories',
+                install: 'npx ai-proxy skills install'
               }
             }
           }

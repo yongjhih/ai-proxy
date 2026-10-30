@@ -76,6 +76,35 @@ npx ai-proxy doctor --dir .
 - [轉送通訊協定 (`docs/zh-TW/protocol.md`)](./docs/zh-TW/protocol.md) · [English (`docs/protocol.md`)](./docs/protocol.md)
 - [安全模型與威脅分析 (`docs/zh-TW/security.md`)](./docs/zh-TW/security.md) · [English (`docs/security.md`)](./docs/security.md)
 
+## Agent 技能（Skills）
+
+`ai-proxy` 內建提供給 AI Coding Assistant（Claude Code, Antigravity/Gemini, Codex/Agents, Cursor, Windsurf）的專屬技能：
+
+- [`skills/mcp-pages/SKILL.md`](./skills/mcp-pages/SKILL.md)：指導 AI 為任何靜態網站建立標準 MCP Page（`mcp.html` 與前端 WebMCP 模組）。
+- [`skills/ai-proxy/SKILL.md`](./skills/ai-proxy/SKILL.md)：指導 AI 助手操作與管理 `ai-proxy` 本機中繼器。
+
+### 安裝技能至 AI 助理
+
+可透過 CLI 一鍵將技能安裝或軟連結至主流 AI 代理目錄：
+
+```bash
+# 列出可用的技能
+npx ai-proxy skills list
+
+# 安裝至所有支援的 AI 助理目錄 (~/.claude/skills, ~/.gemini/skills, ~/.agents/skills)
+npx ai-proxy skills install
+
+# 安裝至特定 AI 助理目錄
+npx ai-proxy skills install --target claude       # ~/.claude/skills/
+npx ai-proxy skills install --target antigravity   # ~/.gemini/skills/
+npx ai-proxy skills install --target agents        # ~/.agents/skills/
+npx ai-proxy skills install --target cursor        # .cursor/skills/
+
+# 安裝至自訂目錄或複製檔案（不建立軟連結）
+npx ai-proxy skills install --dir ./custom-skills/
+npx ai-proxy skills install --copy
+```
+
 ## `.devcontainer` 與 `docker-wrapper` CLI 支援
 
 ### 1. `.devcontainer` 支援（`ai-proxy devcontainer`）
