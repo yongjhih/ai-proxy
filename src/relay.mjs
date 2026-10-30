@@ -1115,11 +1115,20 @@ export function createRelayServer({
 
       const messages = Array.isArray(body.messages) ? body.messages : [];
       const permittedTools = resolvePermittedV1Tools();
+      let derivedSession = 'default';
+      const refOrOrigin = req.headers['referer'] || req.headers['origin'];
+      if (refOrOrigin) {
+        try {
+          const u = new URL(refOrOrigin);
+          const slug = (u.hostname + u.pathname).replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 64);
+          if (slug) derivedSession = 'site_' + slug;
+        } catch (_) {}
+      }
       const sessionId =
         (typeof body.user === 'string' && body.user) ||
         (typeof req.headers['x-session-id'] === 'string' && req.headers['x-session-id']) ||
         (typeof req.headers['x-conversation-id'] === 'string' && req.headers['x-conversation-id']) ||
-        'default';
+        derivedSession;
 
       try {
         let replyText = '';

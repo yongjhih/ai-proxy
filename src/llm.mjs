@@ -75,6 +75,10 @@ export function buildSystemContext({ permittedTools = [], baseContext = '' } = {
     .map((t) => `- \`${t.fullSpec}\`: ${t.definition?.annotations?.title || t.tool}`)
     .join('\n');
 
+  const linksInstruction = baseContext
+    ? 'When providing links or referencing files, strictly follow the linking instructions and URL formats specified in the caller context. Never output local file:// URLs, localhost filesystem paths, or references to ai-proxy internal files unless explicitly asked about ai-proxy itself.'
+    : 'Answer user queries concisely, accurately, and naturally. When referencing pages or dashboard sections, use Markdown links such as [Quickstart](#quickstart), [Spec](doc.html?d=spec), [Security](doc.html?d=security), [Dashboard](dashboard.html), or [WebMCP Tools](mcp.html). Never output local file:// URLs.';
+
   return [
     'You are the intelligent assistant for MCP Pages & ai-proxy.',
     'MCP Pages turns static websites (such as GitHub Pages) into standard Model Context Protocol (MCP) servers with zero backend.',
@@ -84,7 +88,7 @@ export function buildSystemContext({ permittedTools = [], baseContext = '' } = {
     'Available permitted read-only tools on this instance:',
     toolList || '- None currently enabled',
     '',
-    'Answer user queries concisely, accurately, and naturally. When referencing pages or dashboard sections, use Markdown links such as [Quickstart](#quickstart), [Spec](doc.html?d=spec), [Security](doc.html?d=security), [Dashboard](dashboard.html), or [WebMCP Tools](mcp.html).',
+    linksInstruction,
     baseContext
   ]
     .filter(Boolean)
