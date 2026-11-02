@@ -62,6 +62,11 @@ npx ai-proxy skills install --target antigravity
 npx ai-proxy skills install --target agents
 npx ai-proxy skills install --target cursor
 
+# Interactive terminal AI Agent CLI or single-shot question
+npx ai-proxy agent "Tell me about MCP Pages"
+npx ai-proxy agent               # Interactive REPL mode
+npx ai-proxy chat                # Alias for agent
+
 # Initialize or run .devcontainer with host.docker.internal ai-proxy bridge
 npx ai-proxy devcontainer init --dir .
 npx ai-proxy devcontainer up --dir .

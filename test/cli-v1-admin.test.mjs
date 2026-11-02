@@ -406,5 +406,44 @@ test('CLI subcommands: allow, allow-origin, deny, add, sites, remove, vendor, ke
   assert.ok(fs.existsSync(path.join(geminiSkillDir, 'SKILL.md')));
   const stat = fs.lstatSync(geminiSkillDir);
   assert.equal(stat.isSymbolicLink(), false);
+
+  // 13. ai-proxy agent / chat CLI
+  // 13a. Single-shot prompt against ephemeral relay
+  const agentPromptRes = await execCli(
+    ['agent', 'MCP 是什麼？', '--port', String(port)],
+    env
+  );
+  assert.equal(agentPromptRes.code, 0);
+  assert.ok(agentPromptRes.stdout.length > 0);
+
+  // 13b. Single-shot with --json
+  const agentJsonRes = await execCli(
+    ['agent', 'MCP 是什麼？', '--port', String(port), '--json'],
+    env
+  );
+  assert.equal(agentJsonRes.code, 0);
+  const parsedAgentJson = JSON.parse(agentJsonRes.stdout);
+  assert.equal(parsedAgentJson.object, 'chat.completion');
+  assert.ok(parsedAgentJson.choices[0].message.content.length > 0);
+
+  // 13c. Interactive REPL mode with slash commands and /exit
+  const replRes = await execCli(
+    ['agent', '--port', String(port)],
+    env,
+    {
+      stdinText: 'hello\n/session\n/tools\n/clear\n/help\n/exit\n'
+    }
+  );
+  assert.equal(replRes.code, 0);
+  assert.ok(replRes.stderr.includes('ai-proxy Agent Client CLI'));
+  assert.ok(replRes.stderr.includes('Bye!'));
+
+  // 13d. Unreachable relay error
+  const unreachableRes = await execCli(
+    ['agent', 'test', '--port', '65530'],
+    env
+  );
+  assert.equal(unreachableRes.code, 1);
+  assert.ok(unreachableRes.stderr.includes('Error connecting to ai-proxy'));
 });
 
