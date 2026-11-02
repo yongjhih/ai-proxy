@@ -6,6 +6,8 @@
   "type": "module",
   "bin": {
     "ai-proxy": "./bin/ai-proxy.mjs",
+    "ai-agent": "./bin/ai-proxy-agent.mjs",
+    "ai-proxy-agent": "./bin/ai-proxy-agent.mjs",
     "ai-proxy-docker": "./bin/ai-proxy-docker.mjs",
     "docker-wrapper": "./bin/ai-proxy-docker.mjs"
   },

@@ -42,6 +42,33 @@ npx ai-proxy add https://yongjhih.github.io/ai-proxy/mcp --name ai-proxy
 
 # 3. 開啟帶管理金鑰的本機儀表板分頁
 npx ai-proxy open dashboard
+
+# 4. 直接在終端機與 AI 代理交談（單次問答或互動式 REPL）
+npx ai-proxy agent "MCP 是什麼？"
+npx ai-proxy agent        # 或別名：npx ai-proxy chat
+```
+
+## 終端機 AI Agent CLI（`ai-proxy agent` / `ai-agent`）
+
+`ai-proxy` 內建開箱即用的終端機 AI 代理客戶端，直接連線至本機 `/v1/chat/completions` 端點，支援工具調用、多輪對話維護與 REPL 互動模式：
+
+```bash
+# 單次問答
+npx ai-proxy agent "什麼是 MCP Pages？"
+
+# 輸出標準 JSON 格式
+npx ai-proxy agent "什麼是 MCP Pages？" --json
+
+# 進入互動式多輪 REPL 交談模式
+npx ai-proxy agent
+# 或使用二進位別名：
+npx ai-agent
+
+# 在 REPL 中可使用斜線指令：
+ai-proxy> /tools      # 檢視當前已允許的 WebMCP 工具
+ai-proxy> /session    # 檢視或切換 Session ID
+ai-proxy> /clear      # 清除對話紀錄
+ai-proxy> /exit       # 退出 Agent CLI
 ```
 
 ## 為你的靜態網站加上 MCP 頁

@@ -8,6 +8,7 @@ import { createStore, validateAllowToolSpec, getEquivalentPageUrls } from './sto
 import { createRelayServer, defaultOpenBrowser } from './relay.mjs';
 import { runDockerWrapper, runDevcontainerSubcommand } from './docker.mjs';
 import { createLlmBackend } from './llm.mjs';
+import { runAgentCli } from './agent-cli.mjs';
 import { normalizePageUrl, resolveMcpEndpoint } from '../web/url.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -80,6 +81,8 @@ function parseFlags(args) {
       flags.cli = args[++i];
     } else if (arg === '--model' || arg === '-m') {
       flags.model = args[++i];
+    } else if (arg === '--session' || arg === '-s') {
+      flags.session = args[++i];
     } else if (arg === '--gemini-key') {
       flags.geminiKey = args[++i];
     } else if (arg === '--anthropic-key') {
@@ -237,6 +240,8 @@ export async function runCli(
       `Usage: ai-proxy <command> [options]
 
 Commands:
+  agent [prompt...] [--port 8788] [--session <id>] [--model <name>] [--json]
+  chat [prompt...] [--port 8788] [--session <id>] [--model <name>] [--json]
   serve [--port 8788] [--allow-tool mcp__<server>__<tool>] [--upstream <url>] [--cli <agy|claude>] [--model <name>]
   mcp --url <page_url> [--port 8788]
   add <page_url> [--name <slug>] [--read-only] [--no-origin] [--no-prefix] [--port 8788]
@@ -311,6 +316,22 @@ Commands:
       stderr.write(`ai-proxy listening on http://${bound.host}:${bound.port}\n`);
       stdout.write(`${JSON.stringify({ ok: true, host: bound.host, port: bound.port })}\n`);
       return 0;
+    }
+
+    if (subcommand === 'agent' || subcommand === 'chat' || subcommand === 'ask') {
+      const prompt = positionals.slice(1).join(' ');
+      return runAgentCli({
+        host,
+        port,
+        prompt,
+        session: flags.session,
+        model: flags.model,
+        json: flags.json,
+        stdin,
+        stdout,
+        stderr,
+        env
+      });
     }
 
     if (subcommand === 'mcp') {

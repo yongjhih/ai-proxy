@@ -578,6 +578,7 @@ export async function initSelfMcpPage({
               { cmd: 'ai-proxy doctor [--dir <dir>]', desc: isZh ? '診斷靜態站點之 MCP 設定與安全合規性' : 'Diagnose site MCP configuration and security compliance' },
               { cmd: 'ai-proxy install --login', desc: isZh ? '安裝為作業系統開機啟動服務 (Launchd / Systemd)' : 'Install as OS login background service (Launchd / Systemd)' },
               { cmd: 'ai-proxy skills [install|list] [--target <all|claude|antigravity|agents|cursor>]', desc: isZh ? '檢視或安裝 AI 代理技能 (skills/ai-proxy, skills/mcp-pages)' : 'List or install AI agent skills (skills/ai-proxy, skills/mcp-pages)' },
+              { cmd: 'ai-proxy agent [prompt...] [--json]', desc: isZh ? '內建終端機 AI Agent CLI（支援單次問答與互動式 REPL）' : 'Built-in terminal AI Agent CLI (supports single-shot & interactive REPL)' },
               { cmd: 'ai-proxy docker [run|serve|...]', desc: isZh ? '以容器化環境執行 ai-proxy' : 'Run ai-proxy inside Docker container' }
             ]
           },

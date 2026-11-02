@@ -49,6 +49,33 @@ npx ai-proxy add https://yongjhih.github.io/ai-proxy/mcp --name ai-proxy
 
 # 3. Open the authenticated local management dashboard
 npx ai-proxy open dashboard
+
+# 4. Talk to your AI agent directly in the terminal (single-shot or interactive REPL)
+npx ai-proxy agent "Tell me about MCP Pages"
+npx ai-proxy agent        # Or alias: npx ai-proxy chat
+```
+
+## Terminal AI Agent CLI (`ai-proxy agent` / `ai-agent`)
+
+`ai-proxy` includes a built-in terminal AI agent client that connects to the local relay's `/v1/chat/completions` endpoint and provides tool calling, multi-turn conversation sessions, and interactive REPL mode:
+
+```bash
+# Single inquiry
+npx ai-proxy agent "What is MCP Pages?"
+
+# Output raw JSON format
+npx ai-proxy agent "What is MCP Pages?" --json
+
+# Interactive multi-turn REPL mode
+npx ai-proxy agent
+# Or using the bin alias:
+npx ai-agent
+
+# Inside REPL, use slash commands:
+ai-proxy> /tools      # list permitted WebMCP tools
+ai-proxy> /session    # view or change current session ID
+ai-proxy> /clear      # clear conversation history
+ai-proxy> /exit       # quit
 ```
 
 ## Authoring an MCP Page for Your Static Site
